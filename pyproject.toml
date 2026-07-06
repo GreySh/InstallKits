@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "installkits"
+version = "0.1.0"
+description = ""
+authors = ["GreySh <sergei_shchitov@mail.ru>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.14"
+customtkinter = "^6.0.0"
+tinydb = "^4.8.2"
+openpyxl = "^3.1.5"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
