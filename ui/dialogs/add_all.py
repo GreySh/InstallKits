@@ -1,19 +1,22 @@
 """
-Диалог добавления дисков/коробок (существующих видов).
+Диалог добавления носителей/коробок (существующих видов).
 """
 
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 from data import get_all_discs, get_all_boxes, add_stock_disc, add_stock_box
+from ui.dialogs.base_dialog import BaseDialog
 
 
-class AddAllDialog(tk.Toplevel):
+class AddAllDialog(BaseDialog):
+    def get_default_geometry(self):
+        return "400x400"
+    
     def __init__(self, master, stock_tab=None, view_tab=None):
         super().__init__(master)
         
-        self.title("Добавить диски/коробки")
-        self.geometry("400x400")
+        self.title("Добавить носители/коробки")
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)
@@ -25,7 +28,7 @@ class AddAllDialog(tk.Toplevel):
         
         # Получить корневой виджет (MainWindow) для получения ссылок на вкладки
         try:
-            root = master.nametowidget('.')
+            root = master.winfo_toplevel()
             # Использовать переданные параметры, если они есть, иначе получить из главного окна
             if self.stock_tab is None and hasattr(root, 'stock_tab'):
                 self.stock_tab = root.stock_tab
@@ -47,7 +50,7 @@ class AddAllDialog(tk.Toplevel):
                 self.type_index = 0
             self.load_items()
         
-        self.type_combobox = ctk.CTkComboBox(type_frame, values=["Диск", "Коробка"], command=on_type_change)
+        self.type_combobox = ctk.CTkComboBox(type_frame, values=["Носитель", "Коробка"], command=on_type_change)
         self.type_combobox.pack(side="left", padx=10)
         
         # Список
@@ -79,14 +82,9 @@ class AddAllDialog(tk.Toplevel):
         
         # Инициализация
         self.load_items()
-        
-        # Центрирование
-        self.transient(master)
-        self.grab_set()
-        self.wait_window()
     
     def load_items(self):
-        """Загрузить список дисков/коробок."""
+        """Загрузить список носителей/коробок."""
         if self.type_index == 0:
             items = get_all_discs()
             self.item_combobox.configure(values=[item['name'] for item in items])
@@ -100,7 +98,7 @@ class AddAllDialog(tk.Toplevel):
         quantity = self.quantity_entry.get().strip()
         
         if not item_name:
-            messagebox.showerror("Ошибка", "Выберите диск/коробку")
+            messagebox.showerror("Ошибка", "Выберите носитель/коробку")
             return
         
         try:

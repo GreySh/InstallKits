@@ -6,15 +6,20 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
-from data import get_all_products, add_operation, get_product_components, get_stock_disc_quantity, get_stock_box_quantity, adjust_stock_disc, adjust_stock_box
+from data import (
+    get_all_products, get_product_available_quantity, dispatch_product
+)
+from ui.dialogs.base_dialog import BaseDialog
 
 
-class DispatchDialog(tk.Toplevel):
+class DispatchDialog(BaseDialog):
+    def get_default_geometry(self):
+        return "400x350"
+    
     def __init__(self, master, stock_tab=None, view_tab=None):
         super().__init__(master)
         
-        self.title("Списание комплекта")
-        self.geometry("400x350")
+        self.title("Списать ИК")
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(4, weight=1)
@@ -40,7 +45,7 @@ class DispatchDialog(tk.Toplevel):
         date_frame = ctk.CTkFrame(self)
         date_frame.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
         
-        today = datetime.now().strftime('%Y-%m-%d')
+        today = datetime.now().strftime('%d.%m.%Y')
         self.date_entry = ctk.CTkEntry(date_frame)
         self.date_entry.insert(0, today)
         self.date_entry.pack(side="left", padx=5)
@@ -81,56 +86,30 @@ class DispatchDialog(tk.Toplevel):
         # Загрузить первую продукцию
         if product_names:
             self.on_product_change(product_names[0])
-        
-        # Центрирование
-        self.transient(master)
-        self.grab_set()
-        self.wait_window()
     
     def on_product_change(self, value):
         """Обработать изменение продукта."""
-        # Получить доступное количество
-        from data import get_product_components, get_stock_disc_quantity, get_stock_box_quantity
-        
-        # Найти ID продукта
-        from data import get_all_products
         products = get_all_products()
         product_id = None
         for p in products:
             if p['name'] == value:
                 product_id = p.doc_id
                 break
-        
+
         if product_id:
-            components = get_product_components(product_id)
-            min_quantity = float('inf')
-            
-            for comp in components:
-                disc_qty = get_stock_disc_quantity(comp['disc_id']) if comp['disc_id'] else float('inf')
-                box_qty = get_stock_box_quantity(comp['box_id']) if comp['box_id'] else float('inf')
-                
-                if comp['disc_id'] and comp['disc_quantity'] > 0:
-                    disc_qty //= comp['disc_quantity']
-                if comp['box_id'] and comp['box_quantity'] > 0:
-                    box_qty //= comp['box_quantity']
-                
-                min_quantity = min(min_quantity, disc_qty, box_qty)
-            
-            if min_quantity == float('inf'):
-                min_quantity = 0
-            
-            self.available_label.configure(text=f"Доступно: {int(min_quantity)} комплектов")
+            min_quantity = get_product_available_quantity(product_id)
+            self.available_label.configure(text=f"Доступно: {min_quantity} комплектов")
     
     def ok(self):
         """Обработать нажатие кнопки OK."""
         product_name = self.product_combo.get().strip()
         quantity = self.quantity_entry.get().strip()
         date = self.date_entry.get().strip()
-        
+
         if not product_name:
             messagebox.showerror("Ошибка", "Выберите продукт")
             return
-        
+
         try:
             quantity = int(quantity)
             if quantity <= 0:
@@ -138,68 +117,38 @@ class DispatchDialog(tk.Toplevel):
         except ValueError:
             messagebox.showerror("Ошибка", "Количество должно быть положительным числом")
             return
-        
-        # Проверить доступное количество
-        from data import get_all_products, get_product_components
+
         products = get_all_products()
         product_id = None
         for p in products:
             if p['name'] == product_name:
                 product_id = p.doc_id
                 break
-        
-        if product_id:
-            components = get_product_components(product_id)
-            min_quantity = float('inf')
-            
-            for comp in components:
-                disc_qty = get_stock_disc_quantity(comp['disc_id']) if comp['disc_id'] else float('inf')
-                box_qty = get_stock_box_quantity(comp['box_id']) if comp['box_id'] else float('inf')
-                
-                if comp['disc_id'] and comp['disc_quantity'] > 0:
-                    disc_qty //= comp['disc_quantity']
-                if comp['box_id'] and comp['box_quantity'] > 0:
-                    box_qty //= comp['box_quantity']
-                
-                min_quantity = min(min_quantity, disc_qty, box_qty)
-            
-            if min_quantity == float('inf'):
-                min_quantity = 0
-            
-            if quantity > int(min_quantity):
-                messagebox.showerror("Ошибка", f"Недостаточно комплектов. Доступно: {int(min_quantity)}")
-                return
-            
-            # Списать компоненты
-            for comp in components:
-                if comp['disc_id'] and comp['disc_quantity'] > 0:
-                    current = get_stock_disc_quantity(comp['disc_id'])
-                    new_qty = current - (comp['disc_quantity'] * quantity)
-                    adjust_stock_disc(comp['disc_id'], new_qty)
-                
-                if comp['box_id'] and comp['box_quantity'] > 0:
-                    current = get_stock_box_quantity(comp['box_id'])
-                    new_qty = current - (comp['box_quantity'] * quantity)
-                    adjust_stock_box(comp['box_id'], new_qty)
-            
-            # Записать операцию
-            add_operation(
-                operation_type='dispatch',
-                product_id=product_id,
-                quantity=quantity,
-                details={'date': date}
-            )
-            
-            self.accepted = True
-            self.destroy()
-            
-            # Обновить вкладки
-            if self.stock_tab:
-                self.stock_tab.load_stock()
-            if self.view_tab:
-                self.view_tab.load_all()
-        else:
+
+        if not product_id:
             messagebox.showerror("Ошибка", "Продукт не найден")
+            return
+
+        dispatch_date = None
+        if date:
+            try:
+                dispatch_date = datetime.strptime(date, '%d.%m.%Y').strftime('%Y-%m-%d')
+            except ValueError:
+                messagebox.showerror("Ошибка", "Некорректный формат даты. Используйте ДД.ММ.ГГГГ")
+                return
+
+        success, message = dispatch_product(product_id, quantity, dispatch_date)
+        if not success:
+            messagebox.showerror("Ошибка", message)
+            return
+
+        self.accepted = True
+        self.destroy()
+
+        if self.stock_tab:
+            self.stock_tab.load_stock()
+        if self.view_tab:
+            self.view_tab.load_all()
     
     def cancel(self):
         """Обработать нажатие кнопки Cancel."""

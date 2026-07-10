@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учет ИК - Отчет о операциях</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Учет ИК</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('view_stock') }}">Списание</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('stock') }}">Остатки</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('kits') }}">Комплектация</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('reports') }}">Отчеты</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('operations') }}">Операции</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Отчет о операциях</h2>
+            <a href="{{ url_for('operations_report_export', start_date=start_date, end_date=end_date) }}" class="btn btn-success">
+                <i class="bi bi-file-earmark-excel"></i> Экспорт в Excel
+            </a>
+        </div>
+
+        <!-- Фильтры -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Фильтры</h5>
+            </div>
+            <div class="card-body">
+                <form method="get" class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label for="start_date" class="form-label">Начальная дата</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="end_date" class="form-label">Конечная дата</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date or '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-primary w-100">Применить фильтр</button>
+                        <a href="{{ url_for('operations_report') }}" class="btn btn-secondary w-100 mt-2 mt-md-0">Сбросить</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Сводка -->
+        {% if operations %}
+        <div class="alert alert-info">
+            Показано {{ operations|length }} операций
+            {% if start_date or end_date %}
+                за период: {{ start_date or 'начало' }} - {{ end_date or 'сейчас' }}
+            {% endif %}
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="operationsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Дата и время</th>
+                                <th>Тип операции</th>
+                                <th>Продукт</th>
+                                <th>Количество</th>
+                                <th>Детали</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for op in operations %}
+                            <tr>
+                                <td>{{ op["date"] }}</td>
+                                <td>
+                                    {% if op["operation_type"] == 'add_disc' %}
+                                        <span class="badge bg-info">Добавлен носитель</span>
+                                    {% elif op["operation_type"] == 'add_box' %}
+                                        <span class="badge bg-info">Добавлена коробка</span>
+                                    {% elif op["operation_type"] == 'adjust_stock' %}
+                                        <span class="badge bg-warning">Корректировка остатка</span>
+                                    {% elif op["operation_type"] == 'dispatch' %}
+                                        <span class="badge bg-danger">Списание комплекта</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ op["operation_type"] }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if op.get("product_id") %}
+                                        {{ op["product_name"] }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>{{ op.get("quantity", "-") }}</td>
+                                <td>
+                                    {% if op.get("details") and op["details"].get("components") %}
+                                        {% for component in op["details"]["components"] %}
+                                            {% set qty = component.get("quantity") if component.get("quantity") is defined else component.get("total_quantity", 0) %}
+                                            {% set change = op["details"].get("change", '') if op["details"].get("change") is defined else '' %}
+                                            {% if component.get("type") == 'disc' %}
+                                                <span class="badge bg-primary">ДИСК: {{ component.get("name") }} ({{ qty }} шт.){% if change %} {{ change }}{% endif %}</span>
+                                            {% elif component.get("type") == 'box' %}
+                                                <span class="badge bg-success">КОРОБКА: {{ component.name }} ({{ qty }} шт.){% if change %} {{ change }}{% endif %}</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <h4>Нет операций</h4>
+            <p>Операции будут отображаться здесь после их выполнения</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

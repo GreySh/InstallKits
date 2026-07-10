@@ -6,14 +6,17 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 from data import add_product, get_all_discs, get_all_boxes
+from ui.dialogs.base_dialog import BaseDialog
 
 
-class AddProductDialog(tk.Toplevel):
+class AddProductDialog(BaseDialog):
+    def get_default_geometry(self):
+        return "500x500"
+    
     def __init__(self, master):
         super().__init__(master)
         
         self.title("Добавить продукт")
-        self.geometry("500x500")
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)
@@ -32,7 +35,7 @@ class AddProductDialog(tk.Toplevel):
         self.components_frame.grid_columnconfigure(0, weight=1)
         
         # Заголовки
-        ctk.CTkLabel(self.components_frame, text="Диск").grid(row=0, column=0, padx=5, pady=5, sticky="w")
+        ctk.CTkLabel(self.components_frame, text="Носитель").grid(row=0, column=0, padx=5, pady=5, sticky="w")
         ctk.CTkLabel(self.components_frame, text="Кол-во").grid(row=0, column=1, padx=5, pady=5, sticky="w")
         ctk.CTkLabel(self.components_frame, text="Коробка").grid(row=0, column=2, padx=5, pady=5, sticky="w")
         ctk.CTkLabel(self.components_frame, text="Кол-во").grid(row=0, column=3, padx=5, pady=5, sticky="w")
@@ -53,11 +56,6 @@ class AddProductDialog(tk.Toplevel):
         
         self.ok_button = ctk.CTkButton(button_frame, text="Добавить", command=self.ok)
         self.ok_button.pack(side="right", padx=5)
-        
-        # Центрирование
-        self.transient(master)
-        self.grab_set()
-        self.wait_window()
     
     def add_component_row(self):
         """Добавить строку компонента."""

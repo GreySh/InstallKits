@@ -6,13 +6,14 @@ from .db import get_database, get_table
 from tinydb import Query
 
 
-def add_box(name, quantity=0):
+def add_box(name, quantity=0, description=''):
     """
     Добавить новую коробку.
     
     Args:
         name: Название коробки (должно быть уникальным)
         quantity: Количество (по умолчанию 0)
+        description: Описание коробки (по умолчанию '')
     
     Returns:
         int: ID добавленной коробки
@@ -24,7 +25,7 @@ def add_box(name, quantity=0):
     if boxes_table.search(Query().name == name):
         raise ValueError(f"Коробка с названием '{name}' уже существует")
     
-    box_id = boxes_table.insert({'name': name})
+    box_id = boxes_table.insert({'name': name, 'description': description})
     
     stock_table = get_table(db, 'stock_boxes')
     stock_table.insert({'box_id': box_id, 'quantity': quantity})
@@ -53,13 +54,14 @@ def get_box_by_name(name):
     return boxes_table.get(Query().name == name)
 
 
-def update_box(box_id, name):
+def update_box(box_id, name, description=''):
     """
-    Обновить название коробки.
+    Обновить название и описание коробки.
     
     Args:
         box_id: ID коробки
         name: Новое название
+        description: Новое описание (по умолчанию '')
     """
     db = get_database()
     boxes_table = get_table(db, 'boxes')
@@ -69,7 +71,7 @@ def update_box(box_id, name):
     if existing and existing.doc_id != box_id:
         raise ValueError(f"Коробка с названием '{name}' уже существует")
     
-    boxes_table.update({'name': name}, doc_ids=[box_id])
+    boxes_table.update({'name': name, 'description': description}, doc_ids=[box_id])
 
 
 def delete_box(box_id):

@@ -6,17 +6,21 @@ from tkinter import messagebox
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 from openpyxl import Workbook
+from openpyxl.styles import Alignment
 from datetime import datetime
 import os
-from data import get_all_products, get_product_components, get_stock_disc_quantity, get_stock_box_quantity
+from data import get_all_products, get_product_components, get_stock_disc_quantity, get_stock_box_quantity, get_all_stock_discs, get_all_stock_boxes
+from ui.dialogs.base_dialog import BaseDialog
 
 
-class ReportWindow(ctk.CTkToplevel):
+class ReportWindow(BaseDialog):
+    def get_default_geometry(self):
+        return "600x500"
+    
     def __init__(self, master):
         super().__init__(master)
         
         self.title("Отчеты")
-        self.geometry("600x500")
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -28,8 +32,12 @@ class ReportWindow(ctk.CTkToplevel):
         self.report_tree = ttk.Treeview(self, columns=("available",), show="tree headings")
         self.report_tree.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
         
-        self.report_tree.heading("#0", text="Продукт")
-        self.report_tree.heading("available", text="Доступно комплектов")
+        self.report_tree.heading("#0", text="Продукт/Носитель/Коробка")
+        self.report_tree.heading("available", text="Доступно/Остаток")
+        
+        # Настройка ширин колонок
+        self.report_tree.column("#0", width=200, anchor="w")
+        self.report_tree.column("available", width=50, anchor="w")
         
         # Кнопка экспорта
         self.export_button = ctk.CTkButton(self, text="Экспортировать в Excel", command=self.export_excel)
@@ -72,6 +80,16 @@ class ReportWindow(ctk.CTkToplevel):
                 min_quantity = 0
             
             self.report_tree.insert("", "end", text=name, values=(int(min_quantity),))
+        
+        # Загрузить носители
+        discs = get_all_stock_discs()
+        for disc in discs:
+            self.report_tree.insert("", "end", text=f"[Носитель] {disc['disc_name']}", values=(disc['quantity'],))
+        
+        # Загрузить коробки
+        boxes = get_all_stock_boxes()
+        for box in boxes:
+            self.report_tree.insert("", "end", text=f"[Коробка] {box['box_name']}", values=(box['quantity'],))
     
     def export_excel(self):
         """Экспортировать в Excel."""
@@ -81,11 +99,23 @@ class ReportWindow(ctk.CTkToplevel):
         ws.title = "Остатки комплектов"
         
         # Заголовки
-        ws['A1'] = "Продукт"
-        ws['B1'] = "Доступно комплектов"
-        ws['C1'] = "Дата отчета"
+        ws['A1'] = "Продукт/Носитель/Коробка"
+        ws['B1'] = "Доступно/Остаток"
         
-        # Данные
+        # Настройка ширины колонок
+        ws.column_dimensions['A'].width = 35
+        ws.column_dimensions['B'].width = 18
+        ws.column_dimensions['C'].width = 13
+        ws.column_dimensions['D'].width = 11
+
+        # Настройка выравнивания для колонки B (по левому краю)
+        left_alignment = Alignment(horizontal='left')
+        
+        # Дата отчета в ячейке A2
+        ws['C1'] = "Дата отчета:"
+        ws['D1'] = datetime.now().strftime('%d.%m.%Y')
+        
+        # Данные - продукты
         products = get_all_products()
         row = 2
         for product in products:
@@ -111,12 +141,28 @@ class ReportWindow(ctk.CTkToplevel):
             
             ws[f'A{row}'] = name
             ws[f'B{row}'] = int(min_quantity)
-            ws[f'C{row}'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            ws[f'B{row}'].alignment = left_alignment
+            row += 1
+        
+        # Данные - носители
+        discs = get_all_stock_discs()
+        for disc in discs:
+            ws[f'A{row}'] = f"[Носитель] {disc['disc_name']}"
+            ws[f'B{row}'] = disc['quantity']
+            ws[f'B{row}'].alignment = left_alignment
+            row += 1
+        
+        # Данные - коробки
+        boxes = get_all_stock_boxes()
+        for box in boxes:
+            ws[f'A{row}'] = f"[Коробка] {box['box_name']}"
+            ws[f'B{row}'] = box['quantity']
+            ws[f'B{row}'].alignment = left_alignment
             row += 1
         
         # Предложить имя файла
-        default_filename = f"отчет_остатки_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-        
+        default_filename = f"Отчет по остаткам ИК_{datetime.now().strftime('%Y%m%d')}.xlsx"
+
         # Открыть диалог сохранения
         file_path = ctk.filedialog.asksaveasfilename(
             defaultextension=".xlsx",

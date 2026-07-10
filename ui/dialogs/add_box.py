@@ -6,14 +6,17 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 from data import add_box
+from ui.dialogs.base_dialog import BaseDialog
 
 
-class AddBoxDialog(tk.Toplevel):
+class AddBoxDialog(BaseDialog):
+    def get_default_geometry(self):
+        return "300x200"
+    
     def __init__(self, master, stock_tab=None, view_tab=None):
         super().__init__(master)
         
         self.title("Добавить коробку")
-        self.geometry("300x200")
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(5, weight=1)
@@ -42,11 +45,6 @@ class AddBoxDialog(tk.Toplevel):
         
         self.ok_button = ctk.CTkButton(button_frame, text="Добавить", command=self.ok)
         self.ok_button.pack(side="right", padx=5)
-        
-        # Центрирование
-        self.transient(master)
-        self.grab_set()
-        self.wait_window()
     
     def ok(self):
         """Обработать нажатие кнопки OK."""

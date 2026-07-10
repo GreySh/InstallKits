@@ -7,33 +7,26 @@ import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import messagebox
 from data import get_all_stock_discs, get_all_stock_boxes, adjust_stock_disc, adjust_stock_box
+from ui.dialogs.base_dialog import BaseDialog
 
 
-class AdjustStockDialog(tk.Toplevel):
-    def __init__(self, master, stock_tab=None, view_tab=None):
+class AdjustStockDialog(BaseDialog):
+    def get_default_geometry(self):
+        return "400x350"
+    
+    def __init__(self, master, stock_tab=None, view_tab=None, selected_item=None):
         super().__init__(master)
         
         self.title("Корректировка остатков")
-        self.geometry("400x400")
         
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
+        self.grid_rowconfigure(4, weight=1)
         
         self.accepted = False
         self.type_index = 0  # 0 = disc, 1 = box
-        self.stock_tab = stock_tab  # Ссылка на вкладку остатков для обновления
-        self.view_tab = view_tab    # Ссылка на вкладку просмотра для обновления
-        
-        # Получить корневой виджет (MainWindow) для получения ссылок на вкладки
-        try:
-            root = master.nametowidget('.')
-            # Использовать переданные параметры, если они есть, иначе получить из главного окна
-            if self.stock_tab is None and hasattr(root, 'stock_tab'):
-                self.stock_tab = root.stock_tab
-            if self.view_tab is None and hasattr(root, 'view_stock_tab'):
-                self.view_tab = root.view_stock_tab
-        except:
-            pass  # Если не удалось получить корневой виджет, использовать переданные параметры
+        self.stock_tab = stock_tab
+        self.view_tab = view_tab
+        self.selected_item = selected_item  # Выбранный компонент из таблицы
         
         # Тип
         type_frame = ctk.CTkFrame(self)
@@ -48,7 +41,7 @@ class AdjustStockDialog(tk.Toplevel):
                 self.type_index = 0
             self.load_items()
         
-        self.type_combobox = ctk.CTkComboBox(type_frame, values=["Диск", "Коробка"], command=on_type_change)
+        self.type_combobox = ctk.CTkComboBox(type_frame, values=["Носитель", "Коробка"], command=on_type_change)
         self.type_combobox.pack(side="left", padx=10)
         
         # Список
@@ -58,12 +51,9 @@ class AdjustStockDialog(tk.Toplevel):
         
         ctk.CTkLabel(list_frame, text="Выберите:").pack(anchor="w", padx=5, pady=5)
         
-        # Используем ttk.Combobox вместо CTkComboBox для корректной работы события <<ComboboxSelected>>
         self.item_combobox = ttk.Combobox(list_frame, values=[], state="readonly", height=10)
         self.item_combobox.pack(fill="x", padx=5, pady=5)
-        self.item_combobox.set("")  # Установить пустое значение по умолчанию
         
-        # Привязать событие выбора элемента
         self.item_combobox.bind("<<ComboboxSelected>>", self._on_item_selected)
         
         # Текущий остаток
@@ -86,24 +76,28 @@ class AdjustStockDialog(tk.Toplevel):
         self.ok_button.pack(side="right", padx=5)
         
         # Инициализация
-        self.load_items()
-        
-        # Центрирование
-        self.transient(master)
-        self.grab_set()
-        self.wait_window()
+        if self.selected_item:
+            # Установить тип и компонент из выбранного
+            self.type_index = 1 if self.selected_item['type'] == "Коробка" else 0
+            self.type_combobox.set(self.selected_item['type'])
+            self.load_items()
+            self.item_combobox.set(self.selected_item['name'])
+            self.on_item_change(self.selected_item['name'])
+        else:
+            self.load_items()
     
     def load_items(self):
-        """Загрузить список дисков/коробок."""
+        """Загрузить список носителей/коробок."""
         if self.type_index == 0:
             items = get_all_stock_discs()
             self.item_combobox.configure(values=[item['disc_name'] for item in items])
         else:
             items = get_all_stock_boxes()
             self.item_combobox.configure(values=[item['box_name'] for item in items])
-        # Очистить текущее значение после изменения списка
-        self.item_combobox.set("")
-        self.current_label.configure(text="Текущий остаток: 0")
+        
+        if self.item_combobox.get() not in self.item_combobox['values']:
+            self.item_combobox.set("")
+            self.current_label.configure(text="Текущий остаток: 0")
     
     def _on_item_selected(self, e):
         """Обработчик события выбора элемента."""
@@ -112,7 +106,6 @@ class AdjustStockDialog(tk.Toplevel):
     
     def on_item_change(self, value):
         """Обработать изменение выбранного элемента."""
-        # Получить текущий остаток
         if self.type_index == 0:
             from data import get_disc_by_name
             item = get_disc_by_name(value)
@@ -120,8 +113,11 @@ class AdjustStockDialog(tk.Toplevel):
                 from data import get_stock_disc_quantity
                 qty = get_stock_disc_quantity(item.doc_id)
                 self.current_label.configure(text=f"Текущий остаток: {qty}")
+                self.quantity_entry.delete(0, 'end')
+                self.quantity_entry.insert(0, str(qty))
             else:
                 self.current_label.configure(text="Текущий остаток: 0")
+                self.quantity_entry.delete(0, 'end')
         else:
             from data import get_box_by_name
             item = get_box_by_name(value)
@@ -129,8 +125,11 @@ class AdjustStockDialog(tk.Toplevel):
                 from data import get_stock_box_quantity
                 qty = get_stock_box_quantity(item.doc_id)
                 self.current_label.configure(text=f"Текущий остаток: {qty}")
+                self.quantity_entry.delete(0, 'end')
+                self.quantity_entry.insert(0, str(qty))
             else:
                 self.current_label.configure(text="Текущий остаток: 0")
+                self.quantity_entry.delete(0, 'end')
     
     def ok(self):
         """Обработать нажатие кнопки OK."""
@@ -138,7 +137,7 @@ class AdjustStockDialog(tk.Toplevel):
         quantity = self.quantity_entry.get().strip()
         
         if not item_name:
-            messagebox.showerror("Ошибка", "Выберите диск/коробку")
+            messagebox.showerror("Ошибка", "Выберите носитель/коробку")
             return
         
         try:

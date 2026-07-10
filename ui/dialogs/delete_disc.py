@@ -1,19 +1,22 @@
 """
-Диалог удаления диска.
+Диалог удаления носителя.
 """
 
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 from data import get_all_discs, delete_disc
+from ui.dialogs.base_dialog import BaseDialog
 
 
-class DeleteDiscDialog(tk.Toplevel):
+class DeleteDiscDialog(BaseDialog):
+    def get_default_geometry(self):
+        return "300x200"
+    
     def __init__(self, master, stock_tab=None, view_tab=None):
         super().__init__(master)
         
-        self.title("Удалить диск")
-        self.geometry("300x200")
+        self.title("Удалить носитель")
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)
@@ -22,8 +25,8 @@ class DeleteDiscDialog(tk.Toplevel):
         self.stock_tab = stock_tab
         self.view_tab = view_tab
         
-        # Список дисков
-        ctk.CTkLabel(self, text="Выберите диск для удаления:").pack(padx=10, pady=10, anchor="w")
+        # Список носителей
+        ctk.CTkLabel(self, text="Выберите носитель для удаления:").pack(padx=10, pady=10, anchor="w")
         
         discs = get_all_discs()
         disc_names = [disc['name'] for disc in discs]
@@ -46,18 +49,13 @@ class DeleteDiscDialog(tk.Toplevel):
         
         self.delete_button = ctk.CTkButton(button_frame, text="Удалить", command=self.delete, fg_color="red")
         self.delete_button.pack(side="right", padx=5)
-        
-        # Центрирование
-        self.transient(master)
-        self.grab_set()
-        self.wait_window()
     
     def delete(self):
         """Удалить диск."""
         disc_name = self.disc_combo.get().strip()
         
         if not disc_name:
-            messagebox.showerror("Ошибка", "Выберите диск для удаления")
+            messagebox.showerror("Ошибка", "Выберите носитель для удаления")
             return
         
         try:
@@ -74,7 +72,7 @@ class DeleteDiscDialog(tk.Toplevel):
                 if self.view_tab:
                     self.view_tab.load_all()
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Не удалось удалить диск: {str(e)}")
+            messagebox.showerror("Ошибка", f"Не удалось удалить носитель: {str(e)}")
     
     def cancel(self):
         """Обработать нажатие кнопки Cancel."""

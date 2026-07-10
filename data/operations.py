@@ -7,7 +7,7 @@ from tinydb import Query
 from datetime import datetime
 
 
-def add_operation(operation_type, product_id, quantity, details=None):
+def add_operation(operation_type, product_id, quantity, details=None, operation_date=None):
     """
     Добавить операцию в историю.
     
@@ -16,6 +16,7 @@ def add_operation(operation_type, product_id, quantity, details=None):
         product_id: ID продукта (если применимо)
         quantity: Количество
         details: Дополнительные данные (опционально)
+        operation_date: Дата операции в формате 'YYYY-MM-DD' (опционально, если не указана - текущая дата и время)
     
     Returns:
         int: ID добавленной операции
@@ -23,11 +24,18 @@ def add_operation(operation_type, product_id, quantity, details=None):
     db = get_database()
     operations_table = get_table(db, 'operations')
     
+    # Если передана дата без времени, добавляем время
+    if operation_date:
+        if len(operation_date) == 10:  # Формат 'YYYY-MM-DD'
+            operation_date = operation_date + ' ' + datetime.now().strftime('%H:%M:%S')
+    else:
+        operation_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
     return operations_table.insert({
         'operation_type': operation_type,
         'product_id': product_id,
         'quantity': quantity,
-        'date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+        'date': operation_date,
         'details': details or {}
     })
 

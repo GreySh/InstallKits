@@ -1,0 +1,265 @@
+/* Основные стили для веб-приложения Учет ИК */
+
+:root {
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --success-color: #198754;
+    --info-color: #0dcaf0;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --light-color: #f8f9fa;
+    --dark-color: #212529;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+}
+
+/* Навигация */
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+.nav-link {
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    color: #fff;
+    transform: translateY(-2px);
+}
+
+/* Карточки */
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.card-header {
+    font-weight: 600;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+/* Колонка списания */
+.dispatch-col {
+    width: 100px;
+    white-space: nowrap;
+}
+
+.dispatch-qty-input {
+    width: 70px;
+    max-width: 70px;
+    margin-left: auto;
+    text-align: right;
+    display: inline-block;
+}
+
+/* Кнопки */
+.btn {
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Таблицы */
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    font-weight: 600;
+    background-color: #f8f9fa;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Алерты */
+.alert {
+    border-radius: 6px;
+}
+
+/* Футер */
+footer {
+    margin-top: 40px;
+    padding: 20px 0;
+}
+
+footer a {
+    color: #adb5bd;
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: #fff;
+}
+
+/* Прогресс бары */
+.progress {
+    border-radius: 4px;
+    height: 20px;
+}
+
+/* Модальные окна */
+.modal-content {
+    border-radius: 8px;
+}
+
+.modal-header {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+/* Панели статистики */
+.card-display {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Формы */
+.form-label {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.form-control, .form-select {
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Спиннеры */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Иконки Bootstrap Icons */
+.bi {
+    display: inline-block;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .card-display {
+        font-size: 1.75rem;
+    }
+    
+    .navbar-brand {
+        font-size: 1rem;
+    }
+}
+
+/* Утилиты */
+.text-gradient {
+    background: linear-gradient(45deg, var(--primary-color), var(--info-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.shadow {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.shadow-lg {
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+}
+
+/* Сетка */
+.g-3 > * {
+    padding: 0.75rem;
+}
+
+/* Пагинация */
+.page-link {
+    border-radius: 6px;
+}
+
+/* Дата и время */
+.text-muted {
+    color: #6c757d !important;
+}
+
+/* Списки */
+.list-group-item {
+    border-radius: 6px;
+    margin-bottom: 5px;
+}
+
+/* Badge */
+.badge {
+    font-weight: 500;
+    padding: 4px 8px;
+}
+
+/* Стили для печати */
+@media print {
+    body {
+        background-color: white;
+    }
+    
+    .navbar {
+        display: none !important;
+    }
+    
+    .btn,
+    .card-header .d-flex {
+        display: none !important;
+    }
+    
+    .card {
+        box-shadow: none;
+        break-inside: avoid;
+    }
+    
+    .card-body {
+        padding: 15px 0;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+    
+    .table th,
+    .table td {
+        border: 1px solid #000 !important;
+        padding: 5px;
+    }
+    
+    .table thead {
+        background-color: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .alert {
+        display: none !important;
+    }
+    
+    .page-title {
+        font-size: 18px;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+}

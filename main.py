@@ -1,32 +1,31 @@
 """
-Точка входа в приложение.
+Основной модуль приложения.
 """
-
-import sys
-import os
-
-# Добавить текущую директорию в путь
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import customtkinter as ctk
 from ui.main_window import MainWindow
-from data.db import close_database
+import os
+import sys
+import shutil
 
 
-def main():
-    """Главная функция."""
-    # Настроить тему
-    ctk.set_appearance_mode("light")
-    ctk.set_default_color_theme("blue")
-    
-    # Создать и запустить приложение
-    app = MainWindow()
-    
-    # Закрыть базу данных при выходе
-    app.protocol("WM_DELETE_WINDOW", lambda: [close_database(), app.destroy()])
-    
-    app.mainloop()
+def copy_settings_if_needed():
+    """Копировать settings.json в папку с приложением если нужно."""
+    if getattr(sys, 'frozen', False):
+        # Запущено как .exe файл
+        application_dir = os.path.dirname(sys.executable)
+        settings_source = os.path.join(os.path.dirname(__file__), 'settings.json')
+        settings_dest = os.path.join(application_dir, 'settings.json')
+        
+        # Если settings.json в корне приложения не существует, копируем его
+        if os.path.exists(settings_source) and not os.path.exists(settings_dest):
+            try:
+                shutil.copy2(settings_source, settings_dest)
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
-    main()
+    copy_settings_if_needed()
+    app = MainWindow()
+    app.mainloop()

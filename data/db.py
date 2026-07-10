@@ -5,13 +5,37 @@
 from tinydb import TinyDB, Query
 import os
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'db.json')
+# Импортируем настройки
+try:
+    from settings_manager import get_db_path, set_db_path
+except:
+    # Если settings_manager не найден, использовать путь по умолчанию
+    def get_db_path():
+        return os.path.join(os.path.dirname(__file__), 'data', 'db.json')
+    def set_db_path(path):
+        pass
+
+# Инициализация при импорте
+_db_instance = None
+_db_path = None
+
+
+def get_db_path_actual():
+    """Получить текущий путь к базе данных (с проверкой перенастройки)."""
+    global _db_path
+    new_path = get_db_path()
+    if _db_path != new_path:
+        _db_path = new_path
+    return _db_path
 
 
 def get_db():
     """Получить экземпляр базы данных."""
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    return TinyDB(DB_PATH)
+    db_path = get_db_path_actual()
+    db_dir = os.path.dirname(db_path)
+    if db_dir and not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
+    return TinyDB(db_path)
 
 
 def get_table(db, table_name):
@@ -19,14 +43,15 @@ def get_table(db, table_name):
     return db.table(table_name)
 
 
-# Инициализация при импорте
-_db_instance = None
-
-
 def get_database():
     """Получить глобальный экземпляр базы данных."""
     global _db_instance
-    if _db_instance is None:
+    global _db_path
+    new_path = get_db_path_actual()
+    if _db_instance is None or _db_path != new_path:
+        if _db_instance is not None:
+            _db_instance.close()
+        _db_path = new_path
         _db_instance = get_db()
     return _db_instance
 

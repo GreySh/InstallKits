@@ -6,14 +6,17 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 from data import get_all_boxes, delete_box
+from ui.dialogs.base_dialog import BaseDialog
 
 
-class DeleteBoxDialog(tk.Toplevel):
+class DeleteBoxDialog(BaseDialog):
+    def get_default_geometry(self):
+        return "300x200"
+    
     def __init__(self, master, stock_tab=None, view_tab=None):
         super().__init__(master)
         
         self.title("Удалить коробку")
-        self.geometry("300x200")
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(3, weight=1)
@@ -46,11 +49,6 @@ class DeleteBoxDialog(tk.Toplevel):
         
         self.delete_button = ctk.CTkButton(button_frame, text="Удалить", command=self.delete, fg_color="red")
         self.delete_button.pack(side="right", padx=5)
-        
-        # Центрирование
-        self.transient(master)
-        self.grab_set()
-        self.wait_window()
     
     def delete(self):
         """Удалить коробку."""

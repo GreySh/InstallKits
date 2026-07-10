@@ -6,13 +6,14 @@ from .db import get_database, get_table
 from tinydb import Query
 
 
-def add_disc(name, quantity=0):
+def add_disc(name, quantity=0, description=''):
     """
     Добавить новый диск.
     
     Args:
         name: Название диска (должно быть уникальным)
         quantity: Количество (по умолчанию 0)
+        description: Описание диска (по умолчанию '')
     
     Returns:
         int: ID добавленного диска
@@ -24,7 +25,7 @@ def add_disc(name, quantity=0):
     if discs_table.search(Query().name == name):
         raise ValueError(f"Диск с названием '{name}' уже существует")
     
-    disc_id = discs_table.insert({'name': name})
+    disc_id = discs_table.insert({'name': name, 'description': description})
     
     stock_table = get_table(db, 'stock_discs')
     stock_table.insert({'disc_id': disc_id, 'quantity': quantity})
@@ -53,13 +54,14 @@ def get_disc_by_name(name):
     return discs_table.get(Query().name == name)
 
 
-def update_disc(disc_id, name):
+def update_disc(disc_id, name, description=''):
     """
-    Обновить название диска.
+    Обновить название и описание диска.
     
     Args:
         disc_id: ID диска
         name: Новое название
+        description: Новое описание (по умолчанию '')
     """
     db = get_database()
     discs_table = get_table(db, 'discs')
@@ -69,7 +71,7 @@ def update_disc(disc_id, name):
     if existing and existing.doc_id != disc_id:
         raise ValueError(f"Диск с названием '{name}' уже существует")
     
-    discs_table.update({'name': name}, doc_ids=[disc_id])
+    discs_table.update({'name': name, 'description': description}, doc_ids=[disc_id])
 
 
 def delete_disc(disc_id):

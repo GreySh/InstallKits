@@ -1,19 +1,22 @@
 """
-Диалог добавления нового диска.
+Диалог добавления нового носителя.
 """
 
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 from data import add_disc
+from ui.dialogs.base_dialog import BaseDialog
 
 
-class AddDiscDialog(tk.Toplevel):
+class AddDiscDialog(BaseDialog):
+    def get_default_geometry(self):
+        return "300x200"
+    
     def __init__(self, master, stock_tab=None, view_tab=None):
         super().__init__(master)
         
-        self.title("Добавить диск")
-        self.geometry("300x200")
+        self.title("Добавить носитель")
         
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(5, weight=1)
@@ -23,7 +26,7 @@ class AddDiscDialog(tk.Toplevel):
         self.view_tab = view_tab
         
         # Название
-        ctk.CTkLabel(self, text="Название диска:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
+        ctk.CTkLabel(self, text="Название носителя:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
         self.name_entry = ctk.CTkEntry(self)
         self.name_entry.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
         
@@ -42,11 +45,6 @@ class AddDiscDialog(tk.Toplevel):
         
         self.ok_button = ctk.CTkButton(button_frame, text="Добавить", command=self.ok)
         self.ok_button.pack(side="right", padx=5)
-        
-        # Центрирование
-        self.transient(master)
-        self.grab_set()
-        self.wait_window()
     
     def ok(self):
         """Обработать нажатие кнопки OK."""
@@ -54,7 +52,7 @@ class AddDiscDialog(tk.Toplevel):
         quantity = self.quantity_entry.get().strip()
         
         if not name:
-            messagebox.showerror("Ошибка", "Введите название диска")
+            messagebox.showerror("Ошибка", "Введите название носителя")
             return
         
         try:

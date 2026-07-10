@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+.venv312/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Build artifacts
+InstallKits_linux/
+InstallKits_linux.tar.gz
+*.exe
+
+# Local settings and data (optional — uncomment if db should stay local only)
+# settings.json
+# data/db.json
+
+# Debug / temp
+operations_tbody.html
+save_tbody.py
+
+# Tooling
+.gigacode/

@@ -30,19 +30,55 @@ class ProductsTab(ctk.CTkScrollableFrame):
         
         # Заголовки колонок
         self.products_tree.heading("#0", text="ID")
-        self.products_tree.heading("name", text="Название")
+        self.products_tree.heading("name", text="Название", command=lambda: self.sort_by("name"))
         self.products_tree.heading("components", text="Компоненты")
+        
+        # Настройка ширин колонок
+        self.products_tree.column("#0", width=5, anchor="center")
+        self.products_tree.column("name", width=50, anchor="w")
+        self.products_tree.column("components", width=300, anchor="w")
+        
+        # Состояние сортировки
+        self.sort_column = "name"
+        self.sort_reverse = False
         
         # Кнопка редактирования
         self.edit_button = ctk.CTkButton(self, text="Редактировать", command=self.edit_product)
         self.edit_button.grid(row=2, column=0, padx=10, pady=10, sticky="w")
         
         # Кнопка удаления
-        self.delete_button = ctk.CTkButton(self, text="Удалить", command=self.delete_product)
+        self.delete_button = ctk.CTkButton(self, text="Удалить", command=self.delete_product, fg_color="red")
         self.delete_button.grid(row=2, column=1, padx=10, pady=10, sticky="e")
         
         # Загрузить продукты
         self.load_products()
+    
+    def sort_by(self, column):
+        """Сортировка по колонке."""
+        if self.sort_column == column:
+            self.sort_reverse = not self.sort_reverse
+        else:
+            self.sort_column = column
+            self.sort_reverse = False
+        
+        # Получить все элементы
+        items = []
+        for item_id in self.products_tree.get_children():
+            item = self.products_tree.item(item_id)
+            items.append((item_id, item['text'], item['values']))
+        
+        # Сортировать
+        if column == "name":
+            items.sort(key=lambda x: x[2][0], reverse=self.sort_reverse)
+        elif column == "components":
+            items.sort(key=lambda x: x[2][1], reverse=self.sort_reverse)
+        
+        # Очистить и пересоздать
+        for item_id in self.products_tree.get_children():
+            self.products_tree.delete(item_id)
+        
+        for item_id, text, values in items:
+            self.products_tree.insert("", "end", text=text, values=values)
     
     def load_products(self):
         """Загрузить продукты в таблицу."""
@@ -77,6 +113,10 @@ class ProductsTab(ctk.CTkScrollableFrame):
             
             self.products_tree.insert("", "end", text=str(product_id), values=(name, components_text))
     
+    def load_all(self):
+        """Загрузить все данные (для перезагрузки после изменения настроек)."""
+        self.load_products()
+    
     def add_product(self):
         """Открыть диалог добавления продукта."""
         root = self.winfo_toplevel()
@@ -106,9 +146,10 @@ class ProductsTab(ctk.CTkScrollableFrame):
         
         item = self.products_tree.item(selected[0])
         product_id = int(item['text'])
+        product_name = item['values'][0]
         
         # Подтверждение удаления
-        confirm = messagebox.askyesno("Подтверждение", "Вы уверены, что хотите удалить продукт?")
+        confirm = messagebox.askyesno("Подтверждение", f"Вы уверены, что хотите удалить продукт \"{product_name}\"?")
         
         if confirm:
             delete_product(product_id)

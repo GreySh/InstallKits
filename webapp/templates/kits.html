@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учет ИК - Комплектация</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Учет ИК</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('view_stock') }}">Списание</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('stock') }}">Остатки</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('kits') }}">Комплектация</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('reports') }}">Отчеты</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('operations') }}">Операции</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Комплектация</h2>
+        </div>
+
+        <ul class="nav nav-tabs mb-4" id="kitsTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="products-tab" data-bs-toggle="tab" data-bs-target="#products-kits" type="button">
+                    Продукты
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="discs-tab" data-bs-toggle="tab" data-bs-target="#discs-kits" type="button">
+                    Носители
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="boxes-tab" data-bs-toggle="tab" data-bs-target="#boxes-kits" type="button">
+                    Коробки
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="kitsTabsContent">
+            <!-- Продукты -->
+            <div class="tab-pane fade show active" id="products-kits" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Продукты</h5>
+                        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                            <i class="bi bi-plus-square"></i> Добавить
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        {% if products %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Код</th>
+                                            <th>Название</th>
+                                            <th>Описание</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for product in products %}
+                                        <tr>
+                                            <td>{{ product['code'] if 'code' in product else '' }}</td>
+                                            <td>{{ product.name }}</td>
+                                            <td>{{ product['description'] if 'description' in product else '' }}</td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-sm btn-primary me-1" onclick="editProduct({{ product.doc_id }})">
+                                                    Редактировать
+                                                </button>
+                                                <form action="{{ url_for('delete_product_route', product_id=product.doc_id) }}" method="post" class="d-inline" onsubmit="return confirm('Удалить продукт?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted py-5">
+                                <h5>Нет продуктов</h5>
+                                <p>Нажмите "Добавить" чтобы создать первый продукт</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Носители -->
+            <div class="tab-pane fade" id="discs-kits" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Носители</h5>
+                        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addDiscModal">
+                            <i class="bi bi-plus-square"></i> Добавить
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        {% if discs %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Название</th>
+                                            <th>Описание</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for disc in discs %}
+                                        <tr>
+                                            <td>{{ disc.doc_id }}</td>
+                                            <td>{{ disc.name }}</td>
+                                            <td>{{ disc['description'] if 'description' in disc else '' }}</td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#editDiscModal{{ disc.doc_id }}">
+                                                    Редактировать
+                                                </button>
+                                                <form action="{{ url_for('delete_disc_route', disc_id=disc.doc_id) }}" 
+                                                      method="post" class="d-inline" onsubmit="return confirm('Удалить носитель?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted py-5">
+                                <h5>Нет носителей</h5>
+                                <p>Нажмите "Добавить" чтобы создать первый носитель</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Коробки -->
+            <div class="tab-pane fade" id="boxes-kits" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Коробки</h5>
+                        <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addBoxModal">
+                            <i class="bi bi-plus-square"></i> Добавить
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        {% if boxes %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Название</th>
+                                            <th>Описание</th>
+                                            <th>Действия</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for box in boxes %}
+                                        <tr>
+                                            <td>{{ box.doc_id }}</td>
+                                            <td>{{ box.name }}</td>
+                                            <td>{{ box['description'] if 'description' in box else '' }}</td>
+                                            <td class="text-end">
+                                                <button type="button" class="btn btn-sm btn-primary me-1" data-bs-toggle="modal" data-bs-target="#editBoxModal{{ box.doc_id }}">
+                                                    Редактировать
+                                                </button>
+                                                <form action="{{ url_for('delete_box_route', box_id=box.doc_id) }}" 
+                                                      method="post" class="d-inline" onsubmit="return confirm('Удалить коробку?');">
+                                                    <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center text-muted py-5">
+                                <h5>Нет коробок</h5>
+                                <p>Нажмите "Добавить" чтобы создать первую коробку</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления продукта -->
+    <div class="modal fade" id="addProductModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Добавить продукт</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('add_product_route') }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Название <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="code" class="form-label">Код</label>
+                            <input type="text" class="form-control" id="code" name="code">
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Описание</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Добавить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления носителя -->
+    <div class="modal fade" id="addDiscModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">Добавить носитель</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('add_disc_route') }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="disc_name" class="form-label">Название <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="disc_name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="disc_description" class="form-label">Описание</label>
+                            <textarea class="form-control" id="disc_description" name="description" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Добавить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно добавления коробки -->
+    <div class="modal fade" id="addBoxModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Добавить коробку</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('add_box_route') }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="box_name" class="form-label">Название <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="box_name" name="name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="box_description" class="form-label">Описание</label>
+                            <textarea class="form-control" id="box_description" name="description" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Добавить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальные окна редактирования продуктов -->
+    {% for product in products %}
+    <div class="modal fade" id="editProductModal{{ product.doc_id }}" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">Редактировать продукт</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('edit_product_route', product_id=product.doc_id) }}" method="POST">
+                    <input type="hidden" name="redirect_to" value="kits">
+                    <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                        <div class="mb-3">
+                            <label for="edit_name_{{ product.doc_id }}" class="form-label">Название <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_name_{{ product.doc_id }}" name="name" value="{{ product.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_code_{{ product.doc_id }}" class="form-label">Код</label>
+                            <input type="text" class="form-control" id="edit_code_{{ product.doc_id }}" name="code" value="{{ product['code'] if 'code' in product else '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_description_{{ product.doc_id }}" class="form-label">Описание</label>
+                            <textarea class="form-control" id="edit_description_{{ product.doc_id }}" name="description" rows="3">{{ product['description'] if 'description' in product else '' }}</textarea>
+                        </div>
+                        
+                        <hr>
+                        <h6>Компоненты продукта</h6>
+                        <p class="text-muted small">Выберите носители и коробки для состава комплекта</p>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm" id="componentsTable{{ product.doc_id }}">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Тип</th>
+                                        <th>Название</th>
+                                        <th>Количество</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for disc in discs %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" name="component_disc_{{ disc.doc_id }}" value="1"
+                                                   {% if disc.doc_id in product.current_components_discs %}checked{% endif %}>
+                                            <span class="badge bg-info text-dark">Носитель</span>
+                                        </td>
+                                        <td>{{ disc.name }}</td>
+                                        <td>
+                                            <input type="number" class="form-control quantity-input" 
+                                                   name="quantity_disc_{{ disc.doc_id }}" 
+                                                   value="{{ product.current_components_qty_disc.get(disc.doc_id, 0) }}"
+                                                   min="0">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    
+                                    {% for box in boxes %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" name="component_box_{{ box.doc_id }}" value="1"
+                                                   {% if box.doc_id in product.current_components_boxes %}checked{% endif %}>
+                                            <span class="badge bg-success">Коробка</span>
+                                        </td>
+                                        <td>{{ box.name }}</td>
+                                        <td>
+                                            <input type="number" class="form-control quantity-input" 
+                                                   name="quantity_box_{{ box.doc_id }}" 
+                                                   value="{{ product.current_components_qty_box.get(box.doc_id, 0) }}"
+                                                   min="0">
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-warning">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Модальные окна редактирования носителей -->
+    {% for disc in discs %}
+    <div class="modal fade" id="editDiscModal{{ disc.doc_id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">Редактировать носитель</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('edit_disc_route', disc_id=disc.doc_id) }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit_name_{{ disc.doc_id }}" class="form-label">Название <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_name_{{ disc.doc_id }}" name="name" value="{{ disc.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_description_{{ disc.doc_id }}" class="form-label">Описание</label>
+                            <textarea class="form-control" id="edit_description_{{ disc.doc_id }}" name="description" rows="3">{{ disc['description'] if 'description' in disc else '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-warning">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Модальные окна редактирования коробок -->
+    {% for box in boxes %}
+    <div class="modal fade" id="editBoxModal{{ box.doc_id }}" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">Редактировать коробку</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('edit_box_route', box_id=box.doc_id) }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit_name_{{ box.doc_id }}" class="form-label">Название <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_name_{{ box.doc_id }}" name="name" value="{{ box.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit_description_{{ box.doc_id }}" class="form-label">Описание</label>
+                            <textarea class="form-control" id="edit_description_{{ box.doc_id }}" name="description" rows="3">{{ box['description'] if 'description' in box else '' }}</textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-warning">Сохранить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function editProduct(productId) {
+            const modal = new bootstrap.Modal(document.getElementById('editProductModal' + productId));
+            modal.show();
+        }
+    </script>
+</body>
+</html>
