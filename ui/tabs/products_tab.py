@@ -4,7 +4,11 @@
 
 import customtkinter as ctk
 from tkinter import messagebox, ttk
-from data import get_all_products, get_product_components, delete_product, get_disc_by_id, get_box_by_id
+from data import (
+    get_all_products, get_product_components, delete_product,
+    get_disc_by_id, get_box_by_id,
+    get_stock_disc_quantity, get_stock_box_quantity,
+)
 from ui.dialogs.add_product import AddProductDialog
 from ui.dialogs.edit_product import EditProductDialog
 
@@ -17,25 +21,27 @@ class ProductsTab(ctk.CTkScrollableFrame):
         self.grid_rowconfigure(1, weight=1)
         
         # Заголовок
-        self.title_label = ctk.CTkLabel(self, text="Управление продуктами", font=("Arial", 16, "bold"))
+        self.title_label = ctk.CTkLabel(self, text="Управление комплектами", font=("Arial", 16, "bold"))
         self.title_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
         
         # Кнопка добавления
-        self.add_button = ctk.CTkButton(self, text="Добавить продукт", command=self.add_product)
+        self.add_button = ctk.CTkButton(self, text="Добавить комплект", command=self.add_product)
         self.add_button.grid(row=0, column=1, padx=10, pady=10, sticky="e")
         
         # Таблица продуктов
-        self.products_tree = ttk.Treeview(self, columns=("name", "components"), show="tree headings")
+        self.products_tree = ttk.Treeview(self, columns=("name", "available", "components"), show="tree headings")
         self.products_tree.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
         
         # Заголовки колонок
         self.products_tree.heading("#0", text="ID")
         self.products_tree.heading("name", text="Название", command=lambda: self.sort_by("name"))
+        self.products_tree.heading("available", text="Доступно", command=lambda: self.sort_by("available"))
         self.products_tree.heading("components", text="Компоненты")
         
         # Настройка ширин колонок
         self.products_tree.column("#0", width=5, anchor="center")
         self.products_tree.column("name", width=50, anchor="w")
+        self.products_tree.column("available", width=80, anchor="center")
         self.products_tree.column("components", width=300, anchor="w")
         
         # Состояние сортировки
@@ -70,8 +76,10 @@ class ProductsTab(ctk.CTkScrollableFrame):
         # Сортировать
         if column == "name":
             items.sort(key=lambda x: x[2][0], reverse=self.sort_reverse)
-        elif column == "components":
+        elif column == "available":
             items.sort(key=lambda x: x[2][1], reverse=self.sort_reverse)
+        elif column == "components":
+            items.sort(key=lambda x: x[2][2], reverse=self.sort_reverse)
         
         # Очистить и пересоздать
         for item_id in self.products_tree.get_children():
@@ -82,36 +90,41 @@ class ProductsTab(ctk.CTkScrollableFrame):
     
     def load_products(self):
         """Загрузить продукты в таблицу."""
-        # Очистить таблицу
         for item in self.products_tree.get_children():
             self.products_tree.delete(item)
         
-        # Загрузить продукты
         products = get_all_products()
         for product in products:
             product_id = product.doc_id
             name = product['name']
             components = get_product_components(product_id)
             
-            # Сформировать строку компонентов
             components_str = []
+            min_quantity = float('inf')
             for comp in components:
                 comp_details = []
                 if comp['disc_id']:
-                    from data import get_disc_by_id
                     disc = get_disc_by_id(comp['disc_id'])
                     if disc:
                         comp_details.append(f"{disc['name']} x{comp['disc_quantity']}")
+                        disc_qty = get_stock_disc_quantity(comp['disc_id'])
+                        if comp['disc_quantity'] > 0:
+                            disc_qty //= comp['disc_quantity']
+                        min_quantity = min(min_quantity, disc_qty)
                 if comp['box_id']:
-                    from data import get_box_by_id
                     box = get_box_by_id(comp['box_id'])
                     if box:
                         comp_details.append(f"{box['name']} x{comp['box_quantity']}")
+                        box_qty = get_stock_box_quantity(comp['box_id'])
+                        if comp['box_quantity'] > 0:
+                            box_qty //= comp['box_quantity']
+                        min_quantity = min(min_quantity, box_qty)
                 components_str.append(", ".join(comp_details))
             
             components_text = "; ".join(components_str)
+            available = int(min_quantity) if min_quantity != float('inf') else 0
             
-            self.products_tree.insert("", "end", text=str(product_id), values=(name, components_text))
+            self.products_tree.insert("", "end", text=str(product_id), values=(name, available, components_text))
     
     def load_all(self):
         """Загрузить все данные (для перезагрузки после изменения настроек)."""
@@ -129,6 +142,7 @@ class ProductsTab(ctk.CTkScrollableFrame):
         root = self.winfo_toplevel()
         selected = self.products_tree.selection()
         if not selected:
+            messagebox.showwarning("Предупреждение", "Выберите комплект для редактирования")
             return
         
         item = self.products_tree.item(selected[0])
@@ -142,6 +156,7 @@ class ProductsTab(ctk.CTkScrollableFrame):
         """Удалить выбранный продукт."""
         selected = self.products_tree.selection()
         if not selected:
+            messagebox.showwarning("Предупреждение", "Выберите комплект для удаления")
             return
         
         item = self.products_tree.item(selected[0])

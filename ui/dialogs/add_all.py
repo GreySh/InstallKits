@@ -5,7 +5,7 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
-from data import get_all_discs, get_all_boxes, add_stock_disc, add_stock_box
+from data import get_all_discs, get_all_boxes, add_stock_disc, add_stock_box, get_stock_disc_quantity, get_stock_box_quantity
 from ui.dialogs.base_dialog import BaseDialog
 
 
@@ -13,7 +13,7 @@ class AddAllDialog(BaseDialog):
     def get_default_geometry(self):
         return "400x400"
     
-    def __init__(self, master, stock_tab=None, view_tab=None):
+    def __init__(self, master, stock_tab=None, selected_item=None):
         super().__init__(master)
         
         self.title("Добавить носители/коробки")
@@ -23,8 +23,8 @@ class AddAllDialog(BaseDialog):
         
         self.accepted = False
         self.type_index = 0  # 0 = disc, 1 = box
-        self.stock_tab = stock_tab  # Ссылка на вкладку остатков для обновления
-        self.view_tab = view_tab    # Ссылка на вкладку просмотра для обновления
+        self.stock_tab = stock_tab
+        self.selected_item = selected_item
         
         # Получить корневой виджет (MainWindow) для получения ссылок на вкладки
         try:
@@ -32,8 +32,6 @@ class AddAllDialog(BaseDialog):
             # Использовать переданные параметры, если они есть, иначе получить из главного окна
             if self.stock_tab is None and hasattr(root, 'stock_tab'):
                 self.stock_tab = root.stock_tab
-            if self.view_tab is None and hasattr(root, 'view_stock_tab'):
-                self.view_tab = root.view_stock_tab
         except:
             pass  # Если не удалось получить корневой виджет, использовать переданные параметры
         
@@ -60,9 +58,12 @@ class AddAllDialog(BaseDialog):
         
         ctk.CTkLabel(list_frame, text="Выберите:").pack(anchor="w", padx=5, pady=5)
         
-        self.item_combobox = ctk.CTkComboBox(list_frame, values=[], state="readonly")
+        self.item_combobox = ctk.CTkComboBox(list_frame, values=[], state="readonly", command=self._on_item_selected)
         self.item_combobox.pack(fill="x", padx=5, pady=5)
-        self.item_combobox.set("")  # Установить пустое значение по умолчанию
+        self.item_combobox.set("")
+
+        self.current_label = ctk.CTkLabel(list_frame, text="Текущий остаток: 0")
+        self.current_label.pack(anchor="w", padx=5, pady=5)
         
         # Количество
         ctk.CTkLabel(self, text="Количество:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
@@ -81,7 +82,14 @@ class AddAllDialog(BaseDialog):
         self.ok_button.pack(side="right", padx=5)
         
         # Инициализация
-        self.load_items()
+        if self.selected_item:
+            self.type_index = 1 if self.selected_item['type'] == "Коробка" else 0
+            self.type_combobox.set(self.selected_item['type'])
+            self.load_items()
+            self.item_combobox.set(self.selected_item['name'])
+            self._on_item_selected(self.selected_item['name'])
+        else:
+            self.load_items()
     
     def load_items(self):
         """Загрузить список носителей/коробок."""
@@ -92,6 +100,30 @@ class AddAllDialog(BaseDialog):
             items = get_all_boxes()
             self.item_combobox.configure(values=[item['name'] for item in items])
     
+    def _on_item_selected(self, value):
+        """Показать текущий остаток при выборе элемента."""
+        name = value.strip() if value else ""
+        if not name:
+            self.current_label.configure(text="Текущий остаток: 0")
+            return
+
+        if self.type_index == 0:
+            from data import get_disc_by_name
+            item = get_disc_by_name(name)
+            if item:
+                qty = get_stock_disc_quantity(item.doc_id)
+                self.current_label.configure(text=f"Текущий остаток: {qty}")
+                return
+        else:
+            from data import get_box_by_name
+            item = get_box_by_name(name)
+            if item:
+                qty = get_stock_box_quantity(item.doc_id)
+                self.current_label.configure(text=f"Текущий остаток: {qty}")
+                return
+
+        self.current_label.configure(text="Текущий остаток: 0")
+
     def ok(self):
         """Обработать нажатие кнопки OK."""
         item_name = self.item_combobox.get().strip()
@@ -126,8 +158,8 @@ class AddAllDialog(BaseDialog):
         # Обновить вкладки
         if self.stock_tab:
             self.stock_tab.load_stock()
-        if self.view_tab:
-            self.view_tab.load_all()
+        if self.stock_tab:
+            self.stock_tab.load_all()
     
     def cancel(self):
         """Обработать нажатие кнопки Cancel."""

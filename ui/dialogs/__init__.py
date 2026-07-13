@@ -9,3 +9,7 @@ from ui.dialogs.add_box import AddBoxDialog
 from ui.dialogs.add_all import AddAllDialog
 from ui.dialogs.adjust_stock import AdjustStockDialog
 from ui.dialogs.dispatch import DispatchDialog
+from ui.dialogs.write_off import WriteOffDialog
+from ui.dialogs.edit_disc import EditDiscDialog
+from ui.dialogs.edit_box import EditBoxDialog
+from ui.dialogs.batch_dispatch import BatchDispatchDialog

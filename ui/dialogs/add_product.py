@@ -32,7 +32,11 @@ class AddProductDialog(BaseDialog):
         # Фрейм компонентов
         self.components_frame = ctk.CTkFrame(self)
         self.components_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
-        self.components_frame.grid_columnconfigure(0, weight=1)
+        self.components_frame.grid_columnconfigure(0, weight=3)
+        self.components_frame.grid_columnconfigure(1, weight=0)
+        self.components_frame.grid_columnconfigure(2, weight=3)
+        self.components_frame.grid_columnconfigure(3, weight=0)
+        self.components_frame.grid_columnconfigure(4, weight=0)
         
         # Заголовки
         ctk.CTkLabel(self.components_frame, text="Носитель").grid(row=0, column=0, padx=5, pady=5, sticky="w")
@@ -74,9 +78,9 @@ class AddProductDialog(BaseDialog):
         disc_combo.grid(row=row, column=0, padx=5, pady=5, sticky="ew")
         
         # Кол-во диска
-        qty_entry = ctk.CTkEntry(self.components_frame, width=80)
+        qty_entry = ctk.CTkEntry(self.components_frame, width=50)
         qty_entry.insert(0, "0")
-        qty_entry.grid(row=row, column=1, padx=5, pady=5, sticky="w")
+        qty_entry.grid(row=row, column=1, padx=5, pady=5, sticky="e")
         
         # Коробка
         box_var = ctk.StringVar(value="(нет)")
@@ -84,9 +88,9 @@ class AddProductDialog(BaseDialog):
         box_combo.grid(row=row, column=2, padx=5, pady=5, sticky="ew")
         
         # Кол-во коробки
-        qty_entry2 = ctk.CTkEntry(self.components_frame, width=80)
+        qty_entry2 = ctk.CTkEntry(self.components_frame, width=50)
         qty_entry2.insert(0, "0")
-        qty_entry2.grid(row=row, column=3, padx=5, pady=5, sticky="w")
+        qty_entry2.grid(row=row, column=3, padx=5, pady=5, sticky="e")
         
         # Кнопка удаления
         delete_button = ctk.CTkButton(self.components_frame, text="×", width=30, command=lambda: self.remove_component_row(row, delete_button))

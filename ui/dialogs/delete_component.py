@@ -13,7 +13,7 @@ class DeleteComponentDialog(BaseDialog):
     def get_default_geometry(self):
         return "300x300"
     
-    def __init__(self, master, stock_tab=None, view_tab=None):
+    def __init__(self, master, stock_tab=None):
         super().__init__(master)
         
         self.title("Удалить компонент")
@@ -23,7 +23,6 @@ class DeleteComponentDialog(BaseDialog):
         
         self.accepted = False
         self.stock_tab = stock_tab
-        self.view_tab = view_tab
         
         # Заголовок
         ctk.CTkLabel(self, text="Выберите компонент для удаления:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
@@ -120,8 +119,6 @@ class DeleteComponentDialog(BaseDialog):
                 # Обновить вкладки
                 if self.stock_tab:
                     self.stock_tab.load_stock()
-                if self.view_tab:
-                    self.view_tab.load_all()
             except Exception as e:
                 messagebox.showerror("Ошибка", f"Не удалось удалить компонент: {str(e)}")
     

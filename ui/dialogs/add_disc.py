@@ -13,7 +13,7 @@ class AddDiscDialog(BaseDialog):
     def get_default_geometry(self):
         return "300x200"
     
-    def __init__(self, master, stock_tab=None, view_tab=None):
+    def __init__(self, master, stock_tab=None):
         super().__init__(master)
         
         self.title("Добавить носитель")
@@ -23,7 +23,6 @@ class AddDiscDialog(BaseDialog):
         
         self.accepted = False
         self.stock_tab = stock_tab
-        self.view_tab = view_tab
         
         # Название
         ctk.CTkLabel(self, text="Название носителя:").grid(row=0, column=0, padx=10, pady=5, sticky="w")
@@ -71,8 +70,6 @@ class AddDiscDialog(BaseDialog):
             # Обновить вкладки
             if self.stock_tab:
                 self.stock_tab.load_stock()
-            if self.view_tab:
-                self.view_tab.load_all()
         except ValueError as e:
             messagebox.showerror("Ошибка", str(e))
     

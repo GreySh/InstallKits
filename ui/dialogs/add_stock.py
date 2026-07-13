@@ -14,7 +14,7 @@ class AddStockDialog(BaseDialog):
     def get_default_geometry(self):
         return "400x350"
     
-    def __init__(self, master, stock_tab=None, view_tab=None, selected_item=None):
+    def __init__(self, master, stock_tab=None, selected_item=None):
         super().__init__(master)
         
         self.title("Добавление остатков")
@@ -25,7 +25,6 @@ class AddStockDialog(BaseDialog):
         self.accepted = False
         self.type_index = 0  # 0 = disc, 1 = box
         self.stock_tab = stock_tab
-        self.view_tab = view_tab
         self.selected_item = selected_item  # Выбранный компонент из таблицы
         
         # Тип
@@ -172,8 +171,8 @@ class AddStockDialog(BaseDialog):
         # Обновить вкладки
         if self.stock_tab:
             self.stock_tab.load_stock()
-        if self.view_tab:
-            self.view_tab.load_all()
+        if self.stock_tab:
+            self.stock_tab.load_all()
     
     def cancel(self):
         """Обработать нажатие кнопки Cancel."""

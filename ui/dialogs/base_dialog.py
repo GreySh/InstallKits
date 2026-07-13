@@ -76,25 +76,33 @@ class BaseDialog(tk.Toplevel):
         self.destroy()
     
     def load_settings(self):
+        """Загрузить настройки из файла (каждый раз перечитываем, чтобы не терять данные MainWindow)."""
         try:
             from settings_manager import SETTINGS_FILE
             if os.path.exists(SETTINGS_FILE):
                 with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     if 'window_geometries' in data:
-                        BaseDialog.window_geometries = data['window_geometries']
+                        BaseDialog.window_geometries.update(data['window_geometries'])
         except Exception as e:
             pass
     
     def save_settings(self):
+        """Сохранить настройки в файл."""
         try:
-            from settings_manager import SETTINGS_FILE, load_settings, _settings
-            load_settings()
-            if _settings is None:
-                _settings = {}
-            _settings['window_geometries'] = BaseDialog.window_geometries
+            from settings_manager import SETTINGS_FILE
+            
+            # Читаем текущий файл
+            current = {}
+            if os.path.exists(SETTINGS_FILE):
+                with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                    current = json.load(f)
+            
+            # Обновляем геометрии
+            current['window_geometries'] = BaseDialog.window_geometries
+            
+            # Записываем
             with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
-                import json
-                json.dump(_settings, f, ensure_ascii=False, indent=2)
+                json.dump(current, f, ensure_ascii=False, indent=2)
         except Exception as e:
             pass

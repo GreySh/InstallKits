@@ -10,13 +10,14 @@ from data import (
     get_all_products, get_product_available_quantity, dispatch_product
 )
 from ui.dialogs.base_dialog import BaseDialog
+from ui.widgets.date_picker import DatePicker
 
 
 class DispatchDialog(BaseDialog):
     def get_default_geometry(self):
         return "400x350"
     
-    def __init__(self, master, stock_tab=None, view_tab=None):
+    def __init__(self, master, stock_tab=None):
         super().__init__(master)
         
         self.title("Списать ИК")
@@ -26,7 +27,6 @@ class DispatchDialog(BaseDialog):
         
         self.accepted = False
         self.stock_tab = stock_tab  # Ссылка на вкладку остатков для обновления
-        self.view_tab = view_tab    # Ссылка на вкладку просмотра для обновления
         
         # Получить корневой виджет (MainWindow) для получения ссылок на вкладки
         try:
@@ -34,21 +34,17 @@ class DispatchDialog(BaseDialog):
             # Использовать переданные параметры, если они есть, иначе получить из главного окна
             if self.stock_tab is None and hasattr(root, 'stock_tab'):
                 self.stock_tab = root.stock_tab
-            if self.view_tab is None and hasattr(root, 'view_stock_tab'):
-                self.view_tab = root.view_stock_tab
         except:
             pass  # Если не удалось получить корневой виджет, использовать переданные параметры
         
         # Дата отгрузки
         ctk.CTkLabel(self, text="Дата отгрузки:", font=("Arial", 12, "bold")).grid(row=0, column=0, padx=10, pady=10, sticky="w")
         
-        date_frame = ctk.CTkFrame(self)
-        date_frame.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+        self.date_picker = DatePicker(self)
+        self.date_picker.grid(row=0, column=1, padx=10, pady=10, sticky="w")
         
         today = datetime.now().strftime('%d.%m.%Y')
-        self.date_entry = ctk.CTkEntry(date_frame)
-        self.date_entry.insert(0, today)
-        self.date_entry.pack(side="left", padx=5)
+        self.date_picker.insert(0, today)
         
         # Продукт
         ctk.CTkLabel(self, text="Продукт:", font=("Arial", 12, "bold")).grid(row=1, column=0, padx=10, pady=10, sticky="w")
@@ -104,7 +100,7 @@ class DispatchDialog(BaseDialog):
         """Обработать нажатие кнопки OK."""
         product_name = self.product_combo.get().strip()
         quantity = self.quantity_entry.get().strip()
-        date = self.date_entry.get().strip()
+        date = self.date_picker.get().strip()
 
         if not product_name:
             messagebox.showerror("Ошибка", "Выберите продукт")
@@ -147,8 +143,8 @@ class DispatchDialog(BaseDialog):
 
         if self.stock_tab:
             self.stock_tab.load_stock()
-        if self.view_tab:
-            self.view_tab.load_all()
+        if self.stock_tab:
+            self.stock_tab.load_all()
     
     def cancel(self):
         """Обработать нажатие кнопки Cancel."""

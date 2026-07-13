@@ -13,7 +13,7 @@ class DeleteBoxDialog(BaseDialog):
     def get_default_geometry(self):
         return "300x200"
     
-    def __init__(self, master, stock_tab=None, view_tab=None):
+    def __init__(self, master, stock_tab=None):
         super().__init__(master)
         
         self.title("Удалить коробку")
@@ -23,7 +23,6 @@ class DeleteBoxDialog(BaseDialog):
         
         self.accepted = False
         self.stock_tab = stock_tab
-        self.view_tab = view_tab
         
         # Список коробок
         ctk.CTkLabel(self, text="Выберите коробку для удаления:").pack(padx=10, pady=10, anchor="w")
@@ -69,8 +68,6 @@ class DeleteBoxDialog(BaseDialog):
                 # Обновить вкладки
                 if self.stock_tab:
                     self.stock_tab.load_stock()
-                if self.view_tab:
-                    self.view_tab.load_all()
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось удалить коробку: {str(e)}")
     
