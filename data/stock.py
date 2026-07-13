@@ -411,6 +411,63 @@ def add_stock_box(box_id, quantity):
     return result
 
 
+def write_off_component(component_type, component_id, quantity, reason=''):
+    """
+    Списать компонент по браку.
+
+    Args:
+        component_type: 'disc' или 'box'
+        component_id: ID компонента
+        quantity: количество к списанию (> 0)
+        reason: причина списания (брак)
+
+    Returns:
+        tuple: (success: bool, message: str)
+    """
+    if quantity <= 0:
+        return False, 'Количество должно быть положительным числом'
+
+    if component_type == 'disc':
+        current = get_stock_disc_quantity(component_id)
+        if current < quantity:
+            disc = get_disc_by_id(component_id)
+            name = disc['name'] if disc else 'Неизвестно'
+            return False, f'Недостаточно носителей "{name}". Есть {current}, нужно списать {quantity}'
+
+        adjust_stock_disc(component_id, quantity, 'subtract', log_operation=False)
+        disc = get_disc_by_id(component_id)
+        name = disc['name'] if disc else 'Неизвестно'
+
+        details = {
+            'components': [{'type': 'disc', 'name': name, 'quantity': quantity}],
+            'total_quantity': quantity,
+            'reason': reason,
+        }
+        add_operation('write_off', None, quantity, details)
+        return True, f'Списано по браку: {name} — {quantity} шт.'
+
+    elif component_type == 'box':
+        current = get_stock_box_quantity(component_id)
+        if current < quantity:
+            box = get_box_by_id(component_id)
+            name = box['name'] if box else 'Неизвестно'
+            return False, f'Недостаточно коробок "{name}". Есть {current}, нужно списать {quantity}'
+
+        adjust_stock_box(component_id, quantity, 'subtract', log_operation=False)
+        box = get_box_by_id(component_id)
+        name = box['name'] if box else 'Неизвестно'
+
+        details = {
+            'components': [{'type': 'box', 'name': name, 'quantity': quantity}],
+            'total_quantity': quantity,
+            'reason': reason,
+        }
+        add_operation('write_off', None, quantity, details)
+        return True, f'Списано по браку: {name} — {quantity} шт.'
+
+    return False, 'Неверный тип компонента'
+
+
 def get_all_stock_discs():
     """Получить все остатки дисков с информацией о дисках."""
     db = get_database()

@@ -80,6 +80,8 @@
                                             <span class="badge bg-warning">Корректировка остатка</span>
                                         {% elif op["operation_type"] == 'dispatch' %}
                                             <span class="badge bg-danger">Списание комплекта</span>
+                                        {% elif op["operation_type"] == 'write_off' %}
+                                            <span class="badge bg-dark">Списание по браку</span>
                                         {% else %}
                                             <span class="badge bg-secondary">{{ op["operation_type"] }}</span>
                                         {% endif %}
@@ -108,6 +110,9 @@
                                                 {% endfor %}
                                             {% else %}
                                                 -
+                                            {% endif %}
+                                            {% if op["details"].get("reason") %}
+                                                <div class="text-muted small mt-1">Причина: {{ op["details"]["reason"] }}</div>
                                             {% endif %}
                                         {% else %}
                                             -

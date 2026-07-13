@@ -12,7 +12,7 @@ def add_operation(operation_type, product_id, quantity, details=None, operation_
     Добавить операцию в историю.
     
     Args:
-        operation_type: Тип операции ('add_kit', 'dispatch', 'adjust_stock', 'add_disc', 'add_box')
+        operation_type: Тип операции ('add_kit', 'dispatch', 'adjust_stock', 'add_disc', 'add_box', 'write_off')
         product_id: ID продукта (если применимо)
         quantity: Количество
         details: Дополнительные данные (опционально)

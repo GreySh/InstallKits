@@ -6,6 +6,14 @@ document.addEventListener('DOMContentLoaded', function() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
+    // Подсветка активного пункта меню
+    var currentPath = window.location.pathname;
+    document.querySelectorAll('.navbar-nav .nav-link').forEach(function(link) {
+        if (link.getAttribute('href') === currentPath) {
+            link.classList.add('active');
+        }
+    });
+
     // Проверка настройки темы
     if (localStorage.getItem('theme') === 'dark') {
         document.body.classList.add('dark-mode');
@@ -18,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const searchTerm = document.getElementById('searchInput').value;
             if (searchTerm) {
-                // Логика поиска
                 console.log('Поиск:', searchTerm);
             }
         });

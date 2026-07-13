@@ -2,34 +2,37 @@
 Flask веб-приложение для Учета Инсталляционных Комплектов.
 """
 
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from datetime import datetime
 import sys
 import os
-from io import BytesIO
+
 
 # Добавляем путь к проекту
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data import (
-    add_product, get_all_products, get_product_by_id, get_product_components, update_product, delete_product,
+    get_all_products, get_product_by_id, get_product_components, delete_product,
     add_product_with_components, update_product_with_components,
-    add_disc, get_all_discs, get_disc_by_id, get_disc_by_name, update_disc, delete_disc,
-    add_box, get_all_boxes, get_box_by_id, get_box_by_name, update_box, delete_box,
-    add_kit_component, update_kit_component, delete_kit_component, get_kit_components, get_kit_component,
+    add_disc, get_all_discs, get_disc_by_id, update_disc, delete_disc,
+    add_box, get_all_boxes, get_box_by_id, update_box, delete_box,
+    delete_kit_component,
     get_stock_disc_quantity, get_stock_box_quantity,
     adjust_stock_disc, adjust_stock_box,
     add_stock_disc, add_stock_box,
     get_all_stock_discs, get_all_stock_boxes,
-    add_operation, get_operations, get_operations_by_type, delete_operation,
-    get_product_available_quantity, dispatch_product, dispatch_products_batch
+    get_operations,
+    get_product_available_quantity, dispatch_product, dispatch_products_batch,
+    write_off_component,
 )
-from settings_manager import get_db_path, set_db_path
 
-# Импорт для Excel
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
+from excel_helper import (
+    create_workbook, write_section_header, write_table_headers,
+    write_data_row, set_column_widths, send_excel, now_str, today_str,
+)
+
+from settings_manager import get_db_path, set_db_path
+from data.db import close_database
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-here'  # Нужен для flash сообщений
@@ -48,14 +51,12 @@ def get_product_min_stock(product_id):
 
 def get_disc_count(product_id):
     """Получить количество носителей в продукте."""
-    from data import get_product_components
     components = get_product_components(product_id)
     return len([c for c in components if c.get('disc_id')])
 
 
 def get_box_count(product_id):
     """Получить количество коробок в продукте."""
-    from data import get_product_components
     components = get_product_components(product_id)
     return len([c for c in components if c.get('box_id')])
 
@@ -81,14 +82,14 @@ def index():
 @app.route('/products')
 def products():
     """Страница управления продуктами."""
-    products = get_all_products()
+    all_products = get_all_products()
     
     # Подсчитать количество компонентов для каждого продукта
-    for product in products:
+    for product in all_products:
         components = get_product_components(product.doc_id)
         product.components_count = len(components) if components else 0
     
-    return render_template('products.html', products=products)
+    return render_template('products.html', products=all_products)
 
 
 @app.route('/products/add', methods=['GET', 'POST'])
@@ -159,7 +160,6 @@ def edit_product_route(product_id):
             new_components = []
             
             # Сначала удаляем все существующие компоненты
-            from data import delete_kit_component
             for comp in current_components:
                 delete_kit_component(comp.doc_id)
             
@@ -208,8 +208,8 @@ def delete_product_route(product_id):
 @app.route('/discs')
 def discs():
     """Страница управления носителями."""
-    discs = get_all_discs()
-    return render_template('discs.html', discs=discs)
+    all_discs = get_all_discs()
+    return render_template('discs.html', discs=all_discs)
 
 
 @app.route('/discs/add', methods=['POST'])
@@ -252,8 +252,8 @@ def edit_disc_route(disc_id):
 @app.route('/boxes')
 def boxes():
     """Страница управления коробками."""
-    boxes = get_all_boxes()
-    return render_template('boxes.html', boxes=boxes)
+    all_boxes = get_all_boxes()
+    return render_template('boxes.html', boxes=all_boxes)
 
 
 @app.route('/boxes/add', methods=['POST'])
@@ -345,16 +345,29 @@ def stock():
 def add_stock_route():
     """Добавление остатка."""
     component_type = request.form.get('type')
-    component_id = int(request.form.get('component_id'))
-    quantity = int(request.form.get('quantity'))
-    
+    component_id = request.form.get('component_id')
+    quantity = request.form.get('quantity')
+
+    if not component_type or not component_id or not quantity:
+        flash('Ошибка: отсутствуют обязательные поля', 'error')
+        return redirect(url_for('stock'))
+
+    try:
+        component_id = int(component_id)
+        quantity = int(quantity)
+    except ValueError:
+        flash('Ошибка: неверный формат данных', 'error')
+        return redirect(url_for('stock'))
+
     if component_type == 'disc':
         add_stock_disc(component_id, quantity)
         flash('Остаток носителя добавлен успешно!', 'success')
     elif component_type == 'box':
         add_stock_box(component_id, quantity)
         flash('Остаток коробки добавлен успешно!', 'success')
-    
+    else:
+        flash('Ошибка: неверный тип компонента', 'error')
+
     return redirect(url_for('stock'))
 
 
@@ -365,18 +378,14 @@ def adjust_stock_route():
     component_id = request.form.get('component_id')
     quantity = request.form.get('quantity')
     
-    print(f"[ADJUST] type={component_type}, component_id={component_id}, quantity={quantity}")
-    
     if not component_type or not component_id or not quantity:
-        print(f"[ERROR] Missing required fields")
         flash('Ошибка: отсутствуют обязательные поля', 'error')
         return redirect(url_for('stock'))
     
     try:
         component_id = int(component_id)
         quantity = int(quantity)
-    except ValueError as e:
-        print(f"[ERROR] Invalid values: {e}")
+    except ValueError:
         flash('Ошибка: неверный формат данных', 'error')
         return redirect(url_for('stock'))
     
@@ -393,9 +402,32 @@ def adjust_stock_route():
         else:
             flash('Ошибка: коробка не найдена', 'error')
     else:
-        print(f"[ERROR] Invalid component type: {component_type}")
         flash('Ошибка: неверный тип компонента', 'error')
     
+    return redirect(url_for('stock'))
+
+
+@app.route('/stock/write-off', methods=['POST'])
+def write_off_route():
+    """Списание по браку."""
+    component_type = request.form.get('type')
+    component_id = request.form.get('component_id')
+    quantity = request.form.get('quantity')
+    reason = request.form.get('reason', '').strip()
+
+    if not component_type or not component_id or not quantity:
+        flash('Ошибка: отсутствуют обязательные поля', 'error')
+        return redirect(url_for('stock'))
+
+    try:
+        component_id = int(component_id)
+        quantity = int(quantity)
+    except ValueError:
+        flash('Ошибка: неверный формат данных', 'error')
+        return redirect(url_for('stock'))
+
+    success, message = write_off_component(component_type, component_id, quantity, reason)
+    flash(message, 'success' if success else 'error')
     return redirect(url_for('stock'))
 
 
@@ -460,12 +492,31 @@ def dispatch_batch():
 @app.route('/reports')
 def reports():
     """Страница отчетов."""
-    from data import get_all_stock_discs, get_all_stock_boxes, get_all_products
     stock_discs = get_all_stock_discs()
     stock_boxes = get_all_stock_boxes()
     products = get_all_products()
     
     return render_template('reports.html', stock_discs=stock_discs, stock_boxes=stock_boxes, products=products)
+
+
+def _filter_operations_by_date(operations, start_date, end_date):
+    """Отфильтровать список операций по диапазону дат."""
+    if start_date:
+        try:
+            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            operations = [op for op in operations if datetime.fromisoformat(op.get('date', '').replace(' ', 'T')) >= start_dt]
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            operations = [op for op in operations if datetime.fromisoformat(op.get('date', '').replace(' ', 'T')) <= end_dt]
+        except ValueError:
+            pass
+
+    return operations
 
 
 @app.route('/reports/operations')
@@ -483,7 +534,6 @@ def operations_report():
     for op in operations:
         product_id = op.get('product_id', '')
         if product_id:
-            from data import get_product_by_id
             product = get_product_by_id(product_id)
             if product:
                 op['product_name'] = product['name']
@@ -492,23 +542,7 @@ def operations_report():
         else:
             op['product_name'] = '-'
     
-    # Фильтрация по дате если указаны параметры
-    if start_date:
-        try:
-            from datetime import datetime
-            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-            operations = [op for op in operations if datetime.fromisoformat(op.get('date', '').replace(' ', 'T')) >= start_dt]
-        except ValueError:
-            pass
-    
-    if end_date:
-        try:
-            from datetime import datetime
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-            end_dt = end_dt.replace(hour=23, minute=59, second=59)
-            operations = [op for op in operations if datetime.fromisoformat(op.get('date', '').replace(' ', 'T')) <= end_dt]
-        except ValueError:
-            pass
+    operations = _filter_operations_by_date(operations, start_date, end_date)
     
     return render_template('operations_report.html', operations=operations, 
                           start_date=start_date, end_date=end_date)
@@ -519,88 +553,31 @@ def operations_report_export():
     """Экспорт отчета о операциях в Excel."""
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
-    
+
     operations = get_operations()
-    
-    # Фильтрация по дате если указаны параметры
-    if start_date:
-        try:
-            start_dt = datetime.strptime(start_date, '%Y-%m-%d')
-            operations = [op for op in operations if datetime.fromisoformat(op.get('date', '').replace(' ', 'T')) >= start_dt]
-        except ValueError:
-            pass
-    
-    if end_date:
-        try:
-            end_dt = datetime.strptime(end_date, '%Y-%m-%d')
-            end_dt = end_dt.replace(hour=23, minute=59, second=59)
-            operations = [op for op in operations if datetime.fromisoformat(op.get('date', '').replace(' ', 'T')) <= end_dt]
-        except ValueError:
-            pass
-    
-    # Создание книги
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Операции"
-    
-    # Стили
-    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=12)
-    title_font = Font(bold=True, size=14)
-    border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
-    )
-    center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    left_alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
-    
-    # Заголовок отчета
-    ws['A1'] = "ОТЧЕТ О ОПЕРАЦИЯХ"
-    ws['A1'].font = title_font
-    ws.merge_cells('A1:E1')
-    ws['A1'].alignment = center_alignment
-    
+
+    operations = _filter_operations_by_date(operations, start_date, end_date)
+
     period_str = f"{start_date or 'Начало'} - {end_date or 'Текущее время'}"
-    ws['A2'] = f"Период: {period_str}"
-    ws['A2'].font = Font(italic=True, size=10)
-    ws.merge_cells('A2:E2')
-    
-    # Заголовки таблицы
-    headers = ['Дата и время', 'Тип операции', 'Продукт', 'Количество', 'Детали']
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=4, column=col_num)
-        cell.value = header
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center_alignment
-        cell.border = border
-    
-    # Маппинг типов операций
+    wb, ws, row, ac, al = create_workbook("ОТЧЕТ О ОПЕРАЦИЯХ", f"Период: {period_str}", last_col='E', wrap=True)
+
+    row = write_table_headers(ws, row, ['Дата и время', 'Тип операции', 'Продукт', 'Количество', 'Детали'], ac)
+
     operation_type_map = {
         'add_disc': 'Добавлен носитель',
         'add_box': 'Добавлена коробка',
         'adjust_stock': 'Корректировка остатка',
-        'dispatch': 'Списание комплекта'
+        'dispatch': 'Списание комплекта',
+        'write_off': 'Списание по браку',
     }
-    
-    # Данные
-    row = 5
+
     for op in operations:
-        date_str = op.get('date', '')
-        op_type = operation_type_map.get(op.get('operation_type', ''), op.get('operation_type', ''))
-        
         product_id = op.get('product_id', '')
+        product_name = '-'
         if product_id:
             product = get_product_by_id(product_id)
             product_name = product['name'] if product else 'Неизвестно'
-        else:
-            product_name = '-'
-        
-        quantity = op.get('quantity', '')
-        
-        # Детали
+
         details_text = ''
         details = op.get('details', {})
         if isinstance(details, dict):
@@ -610,41 +587,24 @@ def operations_report_export():
                     f"{c.get('type', '').upper()}: {c.get('name', '')} ({c.get('quantity', c.get('total_quantity', ''))} шт.)"
                     for c in components
                 ])
-        
-        ws[f'A{row}'] = date_str
-        ws[f'B{row}'] = op_type
-        ws[f'C{row}'] = product_name
-        ws[f'D{row}'] = quantity
-        ws[f'E{row}'] = details_text
-        
-        for col in ['A', 'B', 'C', 'D', 'E']:
-            ws[f'{col}{row}'].border = border
-            if col == 'D':
-                ws[f'{col}{row}'].alignment = center_alignment
-            else:
-                ws[f'{col}{row}'].alignment = left_alignment
-        
-        ws.row_dimensions[row].height = max(20, len(details_text.split('\n')) * 15) if details_text else 20
-        row += 1
-    
-    # Установка ширины колонок
-    ws.column_dimensions['A'].width = 20
-    ws.column_dimensions['B'].width = 22
-    ws.column_dimensions['C'].width = 25
-    ws.column_dimensions['D'].width = 12
-    ws.column_dimensions['E'].width = 40
-    
-    # Сохранение в BytesIO
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-    
-    return send_file(
-        output,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name=f'операции_{start_date or "all"}_{end_date or "now"}.xlsx'
-    )
+            reason = details.get('reason', '')
+            if reason:
+                details_text += f"\nПричина: {reason}" if details_text else f"Причина: {reason}"
+
+        row = write_data_row(ws, row, [
+            op.get('date', ''),
+            operation_type_map.get(op.get('operation_type', ''), op.get('operation_type', '')),
+            product_name,
+            op.get('quantity', ''),
+            details_text,
+        ], align_left=al, align_center=ac, left_columns={0, 1, 2, 4})
+
+        if details_text:
+            ws.row_dimensions[row - 1].height = max(20, len(details_text.split('\n')) * 15)
+
+    set_column_widths(ws, {'A': 20, 'B': 22, 'C': 25, 'D': 12, 'E': 40})
+
+    return send_excel(wb, f'операции_{start_date or "all"}_{end_date or "now"}.xlsx')
 
 
 @app.route('/reports/stock-levels')
@@ -667,156 +627,43 @@ def stock_levels_export():
     products = get_all_products()
     stock_discs = get_all_stock_discs()
     stock_boxes = get_all_stock_boxes()
-    
-    # Создание книги
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Остатки"
-    
-    # Стили
-    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=12)
-    title_font = Font(bold=True, size=14)
-    section_font = Font(bold=True, size=11, color="FFFFFF")
-    section_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+
+    wb, ws, row, ac, al = create_workbook(
+        "ОТЧЕТ ПО ОСТАТКАМ", f"Дата: {now_str()}", last_col='B',
     )
-    center_alignment = Alignment(horizontal='center', vertical='center')
-    left_alignment = Alignment(horizontal='left', vertical='center')
-    
-    # Заголовок отчета
-    ws['A1'] = "ОТЧЕТ ПО ОСТАТКАМ"
-    ws['A1'].font = title_font
-    ws.merge_cells('A1:B1')
-    ws['A1'].alignment = center_alignment
-    
-    ws['A2'] = f"Дата: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}"
-    ws['A2'].font = Font(italic=True, size=10)
-    ws.merge_cells('A2:B2')
-    
-    # Продукты
-    row = 4
-    ws[f'A{row}'] = "ПРОДУКТЫ"
-    ws[f'A{row}'].font = section_font
-    ws[f'A{row}'].fill = section_fill
-    ws[f'B{row}'] = ""
-    ws[f'B{row}'].fill = section_fill
-    ws.merge_cells(f'A{row}:B{row}')
-    
-    row += 1
-    ws[f'A{row}'] = "Продукт"
-    ws[f'B{row}'] = "Доступно (комплектов)"
-    for col in ['A', 'B']:
-        ws[f'{col}{row}'].font = header_font
-        ws[f'{col}{row}'].fill = header_fill
-        ws[f'{col}{row}'].alignment = center_alignment
-        ws[f'{col}{row}'].border = border
-    
-    row += 1
+
+    row = write_section_header(ws, row, "ПРОДУКТЫ")
+    row = write_table_headers(ws, row, ["Продукт", "Доступно (комплектов)"])
     for product in products:
-        product_id = product.doc_id
-        name = product['name']
-        components = get_product_components(product_id)
-        
-        # Определить минимальное доступное количество комплектов
+        components = get_product_components(product.doc_id)
         min_quantity = float('inf')
         for comp in components:
             disc_qty = get_stock_disc_quantity(comp.get('disc_id', 0)) if comp.get('disc_id') else float('inf')
             box_qty = get_stock_box_quantity(comp.get('box_id', 0)) if comp.get('box_id') else float('inf')
-            
             if comp.get('disc_id') and comp.get('disc_quantity', 0) > 0:
                 disc_qty //= comp['disc_quantity']
             if comp.get('box_id') and comp.get('box_quantity', 0) > 0:
                 box_qty //= comp['box_quantity']
-            
             min_quantity = min(min_quantity, disc_qty, box_qty)
-        
         if min_quantity == float('inf'):
             min_quantity = 0
-        
-        ws[f'A{row}'] = name
-        ws[f'B{row}'] = int(min_quantity)
-        ws[f'A{row}'].alignment = left_alignment
-        ws[f'B{row}'].alignment = center_alignment
-        ws[f'A{row}'].border = border
-        ws[f'B{row}'].border = border
-        row += 1
-    
-    # Носители
+        row = write_data_row(ws, row, [product['name'], int(min_quantity)])
+
     row += 1
-    ws[f'A{row}'] = "НОСИТЕЛИ"
-    ws[f'A{row}'].font = section_font
-    ws[f'A{row}'].fill = section_fill
-    ws[f'B{row}'] = ""
-    ws[f'B{row}'].fill = section_fill
-    ws.merge_cells(f'A{row}:B{row}')
-    
-    row += 1
-    ws[f'A{row}'] = "Носитель"
-    ws[f'B{row}'] = "Остаток"
-    for col in ['A', 'B']:
-        ws[f'{col}{row}'].font = header_font
-        ws[f'{col}{row}'].fill = header_fill
-        ws[f'{col}{row}'].alignment = center_alignment
-        ws[f'{col}{row}'].border = border
-    
-    row += 1
+    row = write_section_header(ws, row, "НОСИТЕЛИ")
+    row = write_table_headers(ws, row, ["Носитель", "Остаток"])
     for disc in stock_discs:
-        ws[f'A{row}'] = disc['disc_name']
-        ws[f'B{row}'] = disc['quantity']
-        ws[f'A{row}'].alignment = left_alignment
-        ws[f'B{row}'].alignment = center_alignment
-        ws[f'A{row}'].border = border
-        ws[f'B{row}'].border = border
-        row += 1
-    
-    # Коробки
+        row = write_data_row(ws, row, [disc['disc_name'], disc['quantity']])
+
     row += 1
-    ws[f'A{row}'] = "КОРОБКИ"
-    ws[f'A{row}'].font = section_font
-    ws[f'A{row}'].fill = section_fill
-    ws[f'B{row}'] = ""
-    ws[f'B{row}'].fill = section_fill
-    ws.merge_cells(f'A{row}:B{row}')
-    
-    row += 1
-    ws[f'A{row}'] = "Коробка"
-    ws[f'B{row}'] = "Остаток"
-    for col in ['A', 'B']:
-        ws[f'{col}{row}'].font = header_font
-        ws[f'{col}{row}'].fill = header_fill
-        ws[f'{col}{row}'].alignment = center_alignment
-        ws[f'{col}{row}'].border = border
-    
-    row += 1
+    row = write_section_header(ws, row, "КОРОБКИ")
+    row = write_table_headers(ws, row, ["Коробка", "Остаток"])
     for box in stock_boxes:
-        ws[f'A{row}'] = box['box_name']
-        ws[f'B{row}'] = box['quantity']
-        ws[f'A{row}'].alignment = left_alignment
-        ws[f'B{row}'].alignment = center_alignment
-        ws[f'A{row}'].border = border
-        ws[f'B{row}'].border = border
-        row += 1
-    
-    # Установка ширины колонок
-    ws.column_dimensions['A'].width = 35
-    ws.column_dimensions['B'].width = 25
-    
-    # Сохранение в BytesIO
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-    
-    return send_file(
-        output,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name=f'остатки_{datetime.now().strftime("%Y%m%d")}.xlsx'
-    )
+        row = write_data_row(ws, row, [box['box_name'], box['quantity']])
+
+    set_column_widths(ws, {'A': 35, 'B': 25})
+
+    return send_excel(wb, f'остатки_{today_str()}.xlsx')
 
 
 # === Экспорт остатков со страницы Списание ===
@@ -824,154 +671,44 @@ def stock_levels_export():
 def export_stock_to_excel():
     """Экспорт остатков в Excel."""
     data = request.get_json()
-    
-    # Создание книги
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Остатки"
-    
-    # Стили
-    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-    header_font = Font(bold=True, color="FFFFFF", size=12)
-    title_font = Font(bold=True, size=14)
-    section_font = Font(bold=True, size=11, color="FFFFFF")
-    section_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-    border = Border(
-        left=Side(style='thin'),
-        right=Side(style='thin'),
-        top=Side(style='thin'),
-        bottom=Side(style='thin')
+
+    wb, ws, row, ac, al = create_workbook(
+        "ОСТАТКИ КОМПЛЕКТОВ", f"Дата: {now_str()}", last_col='D',
     )
-    center_alignment = Alignment(horizontal='center', vertical='center')
-    left_alignment = Alignment(horizontal='left', vertical='center')
-    
-    # Заголовок отчета
-    ws['A1'] = "ОСТАТКИ КОМПЛЕКТОВ"
-    ws['A1'].font = title_font
-    ws.merge_cells('A1:D1')
-    ws['A1'].alignment = center_alignment
-    
-    ws['A2'] = f"Дата: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}"
-    ws['A2'].font = Font(italic=True, size=10)
-    ws.merge_cells('A2:D2')
-    
-    # Продукты
-    row = 4
-    ws[f'A{row}'] = "ПРОДУКТЫ"
-    ws[f'A{row}'].font = section_font
-    ws[f'A{row}'].fill = section_fill
-    for col in ['B', 'C', 'D']:
-        ws[f'{col}{row}'].fill = section_fill
-    ws.merge_cells(f'A{row}:D{row}')
-    
-    row += 1
-    headers = ['Продукт', 'Доступно', 'Носителей', 'Коробок']
-    for col_num, header in enumerate(headers, 1):
-        cell = ws.cell(row=row, column=col_num)
-        cell.value = header
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center_alignment
-        cell.border = border
-    
-    row += 1
+
+    row = write_section_header(ws, row, "ПРОДУКТЫ", last_col='D')
+    row = write_table_headers(ws, row, ['Продукт', 'Доступно', 'Носителей', 'Коробок'])
     for product in data.get('products', []):
-        ws[f'A{row}'] = product['name']
-        ws[f'B{row}'] = product['available']
-        ws[f'C{row}'] = product['discs']
-        ws[f'D{row}'] = product['boxes']
-        
-        for col in ['A', 'B', 'C', 'D']:
-            ws[f'{col}{row}'].border = border
-            if col == 'A':
-                ws[f'{col}{row}'].alignment = left_alignment
-            else:
-                ws[f'{col}{row}'].alignment = center_alignment
-        row += 1
-    
-    # Носители
+        row = write_data_row(ws, row, [
+            product['name'], product['available'], product['discs'], product['boxes'],
+        ])
+
     row += 1
-    ws[f'A{row}'] = "НОСИТЕЛИ"
-    ws[f'A{row}'].font = section_font
-    ws[f'A{row}'].fill = section_fill
-    ws[f'B{row}'].fill = section_fill
-    ws.merge_cells(f'A{row}:B{row}')
-    
-    row += 1
-    for col_num, header in enumerate(['Носитель', 'Остаток'], 1):
-        cell = ws.cell(row=row, column=col_num)
-        cell.value = header
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center_alignment
-        cell.border = border
-    
-    row += 1
+    row = write_section_header(ws, row, "НОСИТЕЛИ")
+    row = write_table_headers(ws, row, ['Носитель', 'Остаток'])
     for disc in data.get('discs', []):
-        ws[f'A{row}'] = disc['name']
-        ws[f'B{row}'] = disc['quantity']
-        ws[f'A{row}'].alignment = left_alignment
-        ws[f'B{row}'].alignment = center_alignment
-        ws[f'A{row}'].border = border
-        ws[f'B{row}'].border = border
-        row += 1
-    
-    # Коробки
+        row = write_data_row(ws, row, [disc['name'], disc['quantity']])
+
     row += 1
-    ws[f'A{row}'] = "КОРОБКИ"
-    ws[f'A{row}'].font = section_font
-    ws[f'A{row}'].fill = section_fill
-    ws[f'B{row}'].fill = section_fill
-    ws.merge_cells(f'A{row}:B{row}')
-    
-    row += 1
-    for col_num, header in enumerate(['Коробка', 'Остаток'], 1):
-        cell = ws.cell(row=row, column=col_num)
-        cell.value = header
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center_alignment
-        cell.border = border
-    
-    row += 1
+    row = write_section_header(ws, row, "КОРОБКИ")
+    row = write_table_headers(ws, row, ['Коробка', 'Остаток'])
     for box in data.get('boxes', []):
-        ws[f'A{row}'] = box['name']
-        ws[f'B{row}'] = box['quantity']
-        ws[f'A{row}'].alignment = left_alignment
-        ws[f'B{row}'].alignment = center_alignment
-        ws[f'A{row}'].border = border
-        ws[f'B{row}'].border = border
-        row += 1
-    
-    # Установка ширины колонок
-    ws.column_dimensions['A'].width = 35
-    ws.column_dimensions['B'].width = 18
-    ws.column_dimensions['C'].width = 18
-    ws.column_dimensions['D'].width = 18
-    
-    # Сохранение в BytesIO
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-    
-    return send_file(
-        output,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name=f'остатки_{datetime.now().strftime("%Y%m%d")}.xlsx'
-    )
+        row = write_data_row(ws, row, [box['name'], box['quantity']])
+
+    set_column_widths(ws, {'A': 35, 'B': 18, 'C': 18, 'D': 18})
+
+    return send_excel(wb, f'остатки_{today_str()}.xlsx')
 
 
 # === История операций ===
 @app.route('/operations')
 def operations():
     """Страница истории операций."""
-    from data import get_operations, get_product_by_id
-    operations = get_operations()
+    all_operations = get_operations()
     # Преобразуем Document объекты в словари
-    operations = [dict(op) for op in operations]
+    all_operations = [dict(op) for op in all_operations]
     # Добавляем имя продукта и обработку типа операции для каждой операции
-    for op in operations:
+    for op in all_operations:
         product_id = op.get('product_id', '')
         if product_id:
             product = get_product_by_id(product_id)
@@ -985,7 +722,7 @@ def operations():
         # Гарантируем что operation_type существует
         if 'operation_type' not in op:
             op['operation_type'] = ''
-    return render_template('operations.html', operations=operations)
+    return render_template('operations.html', operations=all_operations)
 
 
 @app.route('/api/operations')
@@ -1042,7 +779,6 @@ def api_stock():
 @app.route('/api/stock/disc/<int:disc_id>')
 def api_stock_disc(disc_id):
     """API для получения остатка диска."""
-    from data import get_stock_disc_quantity
     quantity = get_stock_disc_quantity(disc_id)
     return jsonify({'quantity': quantity})
 
@@ -1050,11 +786,39 @@ def api_stock_disc(disc_id):
 @app.route('/api/stock/box/<int:box_id>')
 def api_stock_box(box_id):
     """API для получения остатка коробки."""
-    from data import get_stock_box_quantity
     quantity = get_stock_box_quantity(box_id)
     return jsonify({'quantity': quantity})
 
 
+# === Настройки ===
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    """Настройки приложения (путь к базе данных)."""
+    if request.method == 'POST':
+        new_path = request.form.get('db_path', '').strip()
+        if new_path:
+            set_db_path(new_path)
+            close_database()
+            flash('Путь к базе данных обновлен. Новые данные будут загружены.', 'success')
+        else:
+            flash('Путь не может быть пустым.', 'error')
+        return redirect(url_for('settings'))
+
+    current_path = get_db_path()
+    return render_template('settings.html', db_path=current_path)
+
+
 if __name__ == '__main__':
-    # Запуск веб-сервера
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Получаем локальный IP для отображения в терминале
+    import socket
+
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+
+    print(f"\n🌐 Сервер запущен!")
+    print(f"🏠 Локальный доступ: http://127.0.0.1:5000")
+    print(f"🌍 Сетевой доступ:   http://{local_ip}:5000")
+    print(f"💡 Убедитесь, что порт 5000 открыт в брандмауэре\n")
+
+    app.run(host='0.0.0.0', port=5000, debug=True)
+

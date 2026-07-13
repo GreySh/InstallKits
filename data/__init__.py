@@ -12,7 +12,8 @@ from .stock import (
     adjust_stock_disc, adjust_stock_box,
     add_stock_disc, add_stock_box,
     get_all_stock_discs, get_all_stock_boxes,
-    get_product_available_quantity, dispatch_product, dispatch_products_batch
+    get_product_available_quantity, dispatch_product, dispatch_products_batch,
+    write_off_component
 )
 from .operations import add_operation, get_operations, get_operations_by_type, delete_operation
 
@@ -53,6 +54,7 @@ __all__ = [
     'get_product_available_quantity',
     'dispatch_product',
     'dispatch_products_batch',
+    'write_off_component',
     'add_operation',
     'get_operations',
     'get_operations_by_type',

@@ -98,17 +98,17 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Носитель</th>
-                                        <th>Количество</th>
-                                        <th>Действия</th>
+                                         <th>Носитель</th>
+                                         <th>Количество</th>
+                                         <th class="text-end">Действия</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for item in stock_discs %}
                                     <tr>
-                                        <td>{{ item.disc_name }}</td>
-                                        <td>{{ item.quantity }}</td>
-                                        <td>
+                                         <td>{{ item.disc_name }}</td>
+                                         <td>{{ item.quantity }}</td>
+                                         <td class="text-end">
                                             <button class="btn btn-sm btn-warning adjust-btn" 
                                                     data-type="disc" 
                                                     data-id="{{ item.disc_id }}"
@@ -116,6 +116,14 @@
                                                     data-quantity="{{ item.quantity if item.quantity is defined else 0 }}"
                                                     onclick="adjustStock(this)">
                                                 Корректировка
+                                            </button>
+                                            <button class="btn btn-sm btn-danger"
+                                                    data-type="disc"
+                                                    data-id="{{ item.disc_id }}"
+                                                    data-name="{{ item.disc_name if item.disc_name else 'Без имени' }}"
+                                                    data-quantity="{{ item.quantity if item.quantity is defined else 0 }}"
+                                                    onclick="writeOff(this)">
+                                                Брак
                                             </button>
                                         </td>
                                     </tr>
@@ -166,17 +174,17 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>Коробка</th>
-                                        <th>Количество</th>
-                                        <th>Действия</th>
+                                         <th>Коробка</th>
+                                         <th>Количество</th>
+                                         <th class="text-end">Действия</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for item in stock_boxes %}
                                     <tr>
-                                        <td>{{ item.box_name }}</td>
-                                        <td>{{ item.quantity }}</td>
-                                        <td>
+                                         <td>{{ item.box_name }}</td>
+                                         <td>{{ item.quantity }}</td>
+                                         <td class="text-end">
                                             <button class="btn btn-sm btn-success adjust-btn" 
                                                     data-type="box" 
                                                     data-id="{{ item.box_id }}"
@@ -184,6 +192,14 @@
                                                     data-quantity="{{ item.quantity if item.quantity is defined else 0 }}"
                                                     onclick="adjustStock(this)">
                                                 Корректировка
+                                            </button>
+                                            <button class="btn btn-sm btn-danger"
+                                                    data-type="box"
+                                                    data-id="{{ item.box_id }}"
+                                                    data-name="{{ item.box_name if item.box_name else 'Без имени' }}"
+                                                    data-quantity="{{ item.quantity if item.quantity is defined else 0 }}"
+                                                    onclick="writeOff(this)">
+                                                Брак
                                             </button>
                                         </td>
                                     </tr>
@@ -235,7 +251,47 @@
         </div>
     </div>
 
+    <!-- Modal списания по браку -->
+    <div class="modal fade" id="writeOffModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Списание по браку</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="writeOffForm" method="POST" action="{{ url_for('write_off_route') }}">
+                    <div class="modal-body">
+                        <input type="hidden" name="type" id="writeOffType">
+                        <input type="hidden" name="component_id" id="writeOffId">
+
+                        <div class="mb-3">
+                            <label class="form-label">Наименование</label>
+                            <div class="form-control-plaintext" id="writeOffName">-</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Текущий остаток</label>
+                            <div class="form-control-plaintext" id="writeOffCurrent">-</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Количество к списанию</label>
+                            <input type="number" class="form-control" name="quantity" id="writeOffQuantity" min="1" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Причина (брак)</label>
+                            <textarea class="form-control" name="reason" id="writeOffReason" rows="2" placeholder="Описание причины брака..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                        <button type="submit" class="btn btn-danger">Списать</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{{ url_for('static', filename='js/stock.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
