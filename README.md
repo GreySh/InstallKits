@@ -2,11 +2,12 @@
 
 Программа для учета инсталляционных комплектов (ИК), состоящих из **носителей** (дисков) и **коробок**.
 
-Доступны два интерфейса:
+Доступны три интерфейса:
 - **Десктопное приложение** — CustomTkinter (Windows, Linux)
 - **Веб-приложение** — Flask + Bootstrap (работа через браузер)
+- **Десктопное приложение (Toga)** — кроссплатформенный нативный GUI на BeeWare/Toga (Windows, Linux, macOS)
 
-Оба интерфейса используют общий слой данных (`data/`) и одну базу TinyDB.
+Все интерфейсы используют общий слой данных (`data/`) и одну базу TinyDB.
 
 ## Возможности
 
@@ -34,7 +35,7 @@ poetry install
 
 Локальное виртуальное окружение создается в папке `.venv` (настроено в `poetry.toml`).
 
-### Десктопное приложение
+### Десктопное приложение (CustomTkinter)
 
 ```bash
 poetry run python main.py
@@ -52,6 +53,26 @@ python main.py
 # Linux
 source .venv/bin/activate
 python main.py
+```
+
+### Десктопное приложение (Toga)
+
+```bash
+poetry run python run_toga.py
+```
+
+Или с активацией окружения:
+
+```powershell
+# Windows
+.\.venv\Scripts\Activate.ps1
+python run_toga.py
+```
+
+```bash
+# Linux
+source .venv/bin/activate
+python run_toga.py
 ```
 
 ### Веб-приложение
@@ -132,7 +153,7 @@ InstallKits/
 │   ├── stock.py            # Остатки и списание
 │   └── operations.py       # История операций
 │
-├── ui/                     # Десктопный интерфейс
+├── ui/                     # Десктопный интерфейс (CustomTkinter)
 │   ├── main_window.py      # Главное окно
 │   ├── report_window.py    # Окно отчетов
 │   ├── tabs/               # Вкладки
@@ -140,6 +161,11 @@ InstallKits/
 │   │   ├── stock_tab.py
 │   │   ├── settings_tab.py
 │   └── dialogs/            # Диалоговые окна
+│
+├── toga_app/               # Десктопный интерфейс (Toga / BeeWare)
+│   ├── main.py             # Точка входа
+│   ├── app.py              # Класс приложения и экраны
+│   └── dialogs.py          # Диалоговые окна
 │
 └── webapp/                 # Веб-интерфейс
     ├── app.py              # Flask-приложение
@@ -151,7 +177,8 @@ InstallKits/
 
 | Пакет | Назначение |
 |-------|------------|
-| `customtkinter` | Десктопный GUI |
+| `customtkinter` | Десктопный GUI (основной) |
+| `toga` | Десктопный GUI (нативный, BeeWare) |
 | `flask` | Веб-интерфейс |
 | `tinydb` | Файловая база данных (JSON) |
 | `openpyxl` | Экспорт в Excel |

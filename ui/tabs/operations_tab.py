@@ -14,8 +14,8 @@ from ui.widgets.date_picker import DatePicker
 
 
 OPERATION_TYPE_MAP = {
-    'add_disc': 'Добавлен носитель',
-    'add_box': 'Добавлена коробка',
+    'add_disc': 'Добавлены носители',
+    'add_box': 'Добавлены коробки',
     'adjust_stock': 'Корректировка остатка',
     'dispatch': 'Списание комплекта',
     'write_off': 'Списание по браку',

@@ -1,12 +1,10 @@
 """
 Основной модуль приложения.
+Запуск с выбором GUI: CustomTkinter (по умолчанию) или PySide6.
 """
 
-import customtkinter as ctk
-from ui.main_window import MainWindow
-import os
 import sys
-import shutil
+import os
 
 
 def copy_settings_if_needed():
@@ -25,7 +23,58 @@ def copy_settings_if_needed():
                 pass
 
 
+def main():
+    """Запуск приложения с выбором GUI."""
+    # Проверить аргументы командной строки
+    gui_type = None
+    for arg in sys.argv[1:]:
+        if arg.lower() in ['--pyside6', '--qt', '--qt6']:
+            gui_type = 'pyside6'
+            break
+        elif arg.lower() in ['--customtkinter', '--ctk']:
+            gui_type = 'customtkinter'
+            break
+    
+    # Если не указано, использовать CustomTkinter по умолчанию
+    if gui_type is None:
+        gui_type = 'customtkinter'
+    
+    if gui_type == 'pyside6':
+        try:
+            import PySide6
+        except ImportError:
+            print("Ошибка: PySide6 не установлен.")
+            print("Установите его командой:")
+            print("  poetry add PySide6")
+            sys.exit(1)
+        
+        from PySide6.QtWidgets import QApplication
+        from pyside6_app.mainwindow import MainWindow
+        
+        app = QApplication(sys.argv)
+        app.setApplicationName("Учет инсталляционных комплектов")
+        app.setApplicationVersion("1.0.0")
+        
+        window = MainWindow()
+        window.show()
+        
+        sys.exit(app.exec())
+    
+    else:  # customtkinter
+        try:
+            import customtkinter as ctk
+        except ImportError:
+            print("Ошибка: customtkinter не установлен.")
+            print("Установите его командой:")
+            print("  poetry add customtkinter")
+            sys.exit(1)
+        
+        copy_settings_if_needed()
+        from ui.main_window import MainWindow
+        
+        app = MainWindow()
+        app.mainloop()
+
+
 if __name__ == "__main__":
-    copy_settings_if_needed()
-    app = MainWindow()
-    app.mainloop()
+    main()

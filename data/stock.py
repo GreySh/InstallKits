@@ -304,7 +304,8 @@ def adjust_stock_disc(disc_id, quantity, operation='set', log_operation=True):
             'operation': operation,
             'change': change_desc
         }
-        add_operation('adjust_stock', None, new_quantity, details)
+        op_type = 'add_disc' if operation == 'add' else 'adjust_stock'
+        add_operation(op_type, None, quantity, details)
     
     return True
 
@@ -360,7 +361,8 @@ def adjust_stock_box(box_id, quantity, operation='set', log_operation=True):
             'operation': operation,
             'change': change_desc
         }
-        add_operation('adjust_stock', None, new_quantity, details)
+        op_type = 'add_box' if operation == 'add' else 'adjust_stock'
+        add_operation(op_type, None, quantity, details)
     
     return True
 
@@ -481,7 +483,8 @@ def get_all_stock_discs():
             result.append({
                 'disc_id': record['disc_id'],
                 'disc_name': disc['name'],
-                'quantity': record['quantity']
+                'quantity': record['quantity'],
+                'description': disc.get('description', '')
             })
     return result
 
@@ -499,6 +502,7 @@ def get_all_stock_boxes():
             result.append({
                 'box_id': record['box_id'],
                 'box_name': box['name'],
-                'quantity': record['quantity']
+                'quantity': record['quantity'],
+                'description': box.get('description', '')
             })
     return result
