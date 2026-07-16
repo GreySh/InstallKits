@@ -19,7 +19,7 @@ class SettingsTab(ctk.CTkScrollableFrame):
             row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w"
         )
         
-        path_frame = ctk.CTkFrame(self)
+        path_frame = ctk.CTkFrame(self, fg_color="transparent")
         path_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
         path_frame.grid_columnconfigure(1, weight=1)
         
@@ -34,11 +34,16 @@ class SettingsTab(ctk.CTkScrollableFrame):
         self.db_browse_button = ctk.CTkButton(path_frame, text="Обзор", width=80, command=self.browse_db)
         self.db_browse_button.grid(row=1, column=2, padx=5, pady=5)
         
-        save_frame = ctk.CTkFrame(self)
+        save_frame = ctk.CTkFrame(self, fg_color="transparent")
         save_frame.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky="e")
         
         self.save_button = ctk.CTkButton(save_frame, text="Сохранить", command=self.save_settings)
         self.save_button.pack(side="right", padx=5)
+        
+        from version import VERSION
+        ctk.CTkLabel(self, text=f"Версия: {VERSION}", font=("Arial", 11, "bold")).grid(
+            row=3, column=0, columnspan=2, padx=10, pady=(5, 10), sticky="w"
+        )
         
         self.load_current_settings()
     

@@ -56,8 +56,18 @@ class ProductsTab(ctk.CTkScrollableFrame):
         self.delete_button = ctk.CTkButton(self, text="Удалить", command=self.delete_product, fg_color="red")
         self.delete_button.grid(row=2, column=1, padx=10, pady=10, sticky="e")
         
+        # Двойной клик — редактирование комплекта
+        self.products_tree.bind("<Double-1>", self._on_double_click)
+
         # Загрузить продукты
         self.load_products()
+
+    def _on_double_click(self, event):
+        """Открыть редактирование по двойному клику по строке."""
+        item = self.products_tree.identify_row(event.y)
+        if item:
+            self.products_tree.selection_set(item)
+            self.edit_product()
     
     def sort_by(self, column):
         """Сортировка по колонке."""
@@ -134,8 +144,10 @@ class ProductsTab(ctk.CTkScrollableFrame):
         """Открыть диалог добавления продукта."""
         root = self.winfo_toplevel()
         dialog = AddProductDialog(root)
+        self.wait_window(dialog)
         if getattr(dialog, 'accepted', False):
             self.load_products()
+            self._refresh_operations()
     
     def edit_product(self):
         """Открыть диалог редактирования продукта."""
@@ -149,8 +161,22 @@ class ProductsTab(ctk.CTkScrollableFrame):
         product_id = int(item['text'])
         
         dialog = EditProductDialog(root, product_id)
+        self.wait_window(dialog)
         if getattr(dialog, 'accepted', False):
             self.load_products()
+            self._refresh_operations()
+
+    def _refresh_operations(self):
+        """Обновить зависимые вкладки (Списание, Операции) после изменения комплектов."""
+        try:
+            main_window = self.master.nametowidget('.')
+            if hasattr(main_window, 'tabs'):
+                if "Списание" in main_window.tabs:
+                    main_window.tabs["Списание"].load_all()
+                if "Операции" in main_window.tabs:
+                    main_window.tabs["Операции"].load_operations()
+        except Exception:
+            pass
     
     def delete_product(self):
         """Удалить выбранный продукт."""

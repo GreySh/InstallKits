@@ -8,6 +8,7 @@ import tkinter.ttk as ttk
 from tkinter import messagebox
 from data import get_all_stock_discs, get_all_stock_boxes, adjust_stock_disc, adjust_stock_box
 from ui.dialogs.base_dialog import BaseDialog
+from ui.spinbox import CTkSpinbox
 
 
 class AddStockDialog(BaseDialog):
@@ -61,7 +62,7 @@ class AddStockDialog(BaseDialog):
         
         # Количество
         ctk.CTkLabel(self, text="Количество для добавления:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-        self.quantity_entry = ctk.CTkEntry(self)
+        self.quantity_entry = CTkSpinbox(self, start=0)
         self.quantity_entry.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
         
         # Кнопки
@@ -173,6 +174,14 @@ class AddStockDialog(BaseDialog):
             self.stock_tab.load_stock()
         if self.stock_tab:
             self.stock_tab.load_all()
+        main_window = self.master
+        if hasattr(main_window, 'tabs'):
+            if "Состав ИК" in main_window.tabs:
+                main_window.tabs["Состав ИК"].load_all()
+            if "Списание" in main_window.tabs:
+                main_window.tabs["Списание"].load_all()
+            if "Операции" in main_window.tabs:
+                main_window.tabs["Операции"].load_operations()
     
     def cancel(self):
         """Обработать нажатие кнопки Cancel."""

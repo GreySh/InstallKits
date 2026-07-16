@@ -2,10 +2,10 @@
 
 Программа для учета инсталляционных комплектов (ИК), состоящих из **носителей** (дисков) и **коробок**.
 
-Доступны три интерфейса:
-- **Десктопное приложение** — CustomTkinter (Windows, Linux)
-- **Веб-приложение** — Flask + Bootstrap (работа через браузер)
-- **Десктопное приложение (Toga)** — кроссплатформенный нативный GUI на BeeWare/Toga (Windows, Linux, macOS)
+Доступны три интерфейса (каждый со своей точкой входа):
+- **Десктопное приложение** — CustomTkinter (`main.py`, Windows, Linux)
+- **Веб-приложение** — Flask + Bootstrap (`webapp/app.py`, работа через браузер)
+- **Десктопное приложение (Toga)** — кроссплатформенный нативный GUI на BeeWare/Toga (`run_toga.py`, Windows, Linux, macOS)
 
 Все интерфейсы используют общий слой данных (`data/`) и одну базу TinyDB.
 
@@ -135,7 +135,8 @@ poetry run pyinstaller installkits.spec
 
 ```
 InstallKits/
-├── main.py                 # Точка входа (десктоп)
+├── main.py                 # Точка входа (CustomTkinter)
+├── run_toga.py             # Точка входа (Toga)
 ├── settings_manager.py     # Управление настройками
 ├── settings.json           # Настройки приложения
 ├── pyproject.toml          # Зависимости Poetry
@@ -163,7 +164,6 @@ InstallKits/
 │   └── dialogs/            # Диалоговые окна
 │
 ├── toga_app/               # Десктопный интерфейс (Toga / BeeWare)
-│   ├── main.py             # Точка входа
 │   ├── app.py              # Класс приложения и экраны
 │   └── dialogs.py          # Диалоговые окна
 │

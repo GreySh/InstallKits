@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import messagebox
 from data import add_disc
 from ui.dialogs.base_dialog import BaseDialog
+from ui.spinbox import CTkSpinbox
 
 
 class AddDiscDialog(BaseDialog):
@@ -31,8 +32,7 @@ class AddDiscDialog(BaseDialog):
         
         # Количество
         ctk.CTkLabel(self, text="Количество:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-        self.quantity_entry = ctk.CTkEntry(self)
-        self.quantity_entry.insert(0, "0")
+        self.quantity_entry = CTkSpinbox(self, start=0)
         self.quantity_entry.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
         
         # Кнопки

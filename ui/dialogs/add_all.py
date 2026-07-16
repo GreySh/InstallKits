@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import messagebox
 from data import get_all_discs, get_all_boxes, add_stock_disc, add_stock_box, get_stock_disc_quantity, get_stock_box_quantity
 from ui.dialogs.base_dialog import BaseDialog
+from ui.spinbox import CTkSpinbox
 
 
 class AddAllDialog(BaseDialog):
@@ -19,7 +20,7 @@ class AddAllDialog(BaseDialog):
         self.title("Добавить носители/коробки")
         
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
+        self.grid_rowconfigure(1, weight=1)
         
         self.accepted = False
         self.type_index = 0  # 0 = disc, 1 = box
@@ -54,26 +55,32 @@ class AddAllDialog(BaseDialog):
         # Список
         list_frame = ctk.CTkFrame(self)
         list_frame.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
-        list_frame.grid_columnconfigure(0, weight=1)
+        list_frame.grid_columnconfigure(1, weight=1)
         
-        ctk.CTkLabel(list_frame, text="Выберите:").pack(anchor="w", padx=5, pady=5)
-        
-        self.item_combobox = ctk.CTkComboBox(list_frame, values=[], state="readonly", command=self._on_item_selected)
-        self.item_combobox.pack(fill="x", padx=5, pady=5)
+        select_row = ctk.CTkFrame(list_frame)
+        select_row.pack(fill="x", padx=5, pady=5)
+        ctk.CTkLabel(select_row, text="Выберите:").pack(side="left", padx=5)
+        self.item_combobox = ctk.CTkComboBox(select_row, values=[], state="readonly", command=self._on_item_selected)
+        self.item_combobox.pack(side="left", padx=5, fill="x", expand=True)
         self.item_combobox.set("")
 
         self.current_label = ctk.CTkLabel(list_frame, text="Текущий остаток: 0")
         self.current_label.pack(anchor="w", padx=5, pady=5)
         
-        # Количество
-        ctk.CTkLabel(self, text="Количество:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-        self.quantity_entry = ctk.CTkEntry(self)
-        self.quantity_entry.insert(0, "0")
-        self.quantity_entry.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
+        # Приход
+        qty_row = ctk.CTkFrame(self)
+        qty_row.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        ctk.CTkLabel(qty_row, text="Приход:").pack(side="left", padx=10)
+        self.quantity_entry = CTkSpinbox(qty_row, start=0)
+        self.quantity_entry.pack(side="left", padx=10, fill="x", expand=True)
         
+        # Разделитель перед кнопками
+        separator = ctk.CTkFrame(self, height=2, fg_color=("gray80", "gray30"))
+        separator.grid(row=3, column=0, padx=20, pady=(12, 0), sticky="ew")
+
         # Кнопки
         button_frame = ctk.CTkFrame(self)
-        button_frame.grid(row=4, column=0, padx=10, pady=10, sticky="e")
+        button_frame.grid(row=4, column=0, padx=10, pady=(18, 12), sticky="e")
         
         self.cancel_button = ctk.CTkButton(button_frame, text="Отмена", command=self.cancel)
         self.cancel_button.pack(side="right", padx=5)
@@ -160,6 +167,14 @@ class AddAllDialog(BaseDialog):
             self.stock_tab.load_stock()
         if self.stock_tab:
             self.stock_tab.load_all()
+        main_window = self.master
+        if hasattr(main_window, 'tabs'):
+            if "Состав ИК" in main_window.tabs:
+                main_window.tabs["Состав ИК"].load_all()
+            if "Списание" in main_window.tabs:
+                main_window.tabs["Списание"].load_all()
+            if "Операции" in main_window.tabs:
+                main_window.tabs["Операции"].load_operations()
     
     def cancel(self):
         """Обработать нажатие кнопки Cancel."""

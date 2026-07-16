@@ -10,6 +10,7 @@ from data import (
     get_all_products, get_product_available_quantity, dispatch_product
 )
 from ui.dialogs.base_dialog import BaseDialog
+from ui.spinbox import CTkSpinbox
 from ui.widgets.date_picker import DatePicker
 
 
@@ -61,8 +62,7 @@ class DispatchDialog(BaseDialog):
         
         # Количество
         ctk.CTkLabel(self, text="Количество:", font=("Arial", 12, "bold")).grid(row=2, column=0, padx=10, pady=10, sticky="w")
-        self.quantity_entry = ctk.CTkEntry(self)
-        self.quantity_entry.insert(0, "1")
+        self.quantity_entry = CTkSpinbox(self, start=1)
         self.quantity_entry.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
         
         # Информация о доступном

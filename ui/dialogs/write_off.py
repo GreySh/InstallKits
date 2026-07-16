@@ -4,7 +4,6 @@
 
 import customtkinter as ctk
 import tkinter as tk
-import tkinter.ttk as ttk
 from tkinter import messagebox
 from data import (
     get_all_stock_discs, get_all_stock_boxes,
@@ -13,11 +12,12 @@ from data import (
     write_off_component,
 )
 from ui.dialogs.base_dialog import BaseDialog
+from ui.spinbox import CTkSpinbox
 
 
 class WriteOffDialog(BaseDialog):
     def get_default_geometry(self):
-        return "400x380"
+        return "420x430"
 
     def __init__(self, master, stock_tab=None, selected_item=None):
         super().__init__(master)
@@ -25,7 +25,6 @@ class WriteOffDialog(BaseDialog):
         self.title("Списание по браку")
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(5, weight=1)
 
         self.accepted = False
         self.type_index = 0
@@ -48,30 +47,39 @@ class WriteOffDialog(BaseDialog):
         # Список
         list_frame = ctk.CTkFrame(self)
         list_frame.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
-        list_frame.grid_columnconfigure(0, weight=1)
+        list_frame.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkLabel(list_frame, text="Выберите:").pack(anchor="w", padx=5, pady=5)
-
-        self.item_combobox = ttk.Combobox(list_frame, values=[], state="readonly", height=10)
-        self.item_combobox.pack(fill="x", padx=5, pady=5)
-        self.item_combobox.bind("<<ComboboxSelected>>", self._on_item_selected)
+        select_row = ctk.CTkFrame(list_frame)
+        select_row.pack(fill="x", padx=5, pady=5)
+        ctk.CTkLabel(select_row, text="Выберите:").pack(side="left", padx=5)
+        self.item_combobox = ctk.CTkComboBox(select_row, values=[], state="readonly", command=self._on_item_selected)
+        self.item_combobox.pack(side="left", padx=5, fill="x", expand=True)
+        self.item_combobox.set("")
 
         self.current_label = ctk.CTkLabel(list_frame, text="Текущий остаток: 0")
         self.current_label.pack(anchor="w", padx=5, pady=5)
 
         # Количество
-        ctk.CTkLabel(self, text="Количество к списанию:").grid(row=2, column=0, padx=10, pady=5, sticky="w")
-        self.quantity_entry = ctk.CTkEntry(self)
-        self.quantity_entry.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
+        qty_row = ctk.CTkFrame(self)
+        qty_row.grid(row=2, column=0, padx=10, pady=5, sticky="ew")
+        ctk.CTkLabel(qty_row, text="Количество к списанию:").pack(side="left", padx=10)
+        self.quantity_entry = CTkSpinbox(qty_row, start=0)
+        self.quantity_entry.pack(side="left", padx=10, fill="x", expand=True)
 
         # Причина
-        ctk.CTkLabel(self, text="Причина (брак):").grid(row=4, column=0, padx=10, pady=5, sticky="w")
-        self.reason_entry = ctk.CTkEntry(self, placeholder_text="Описание причины брака...")
-        self.reason_entry.grid(row=5, column=0, padx=10, pady=5, sticky="ew")
+        reason_row = ctk.CTkFrame(self)
+        reason_row.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
+        ctk.CTkLabel(reason_row, text="Причина (брак):").pack(side="left", padx=10)
+        self.reason_entry = ctk.CTkEntry(reason_row, placeholder_text="Описание причины брака...")
+        self.reason_entry.pack(side="left", padx=10, fill="x", expand=True)
+
+        # Разделитель перед кнопками
+        separator = ctk.CTkFrame(self, height=2, fg_color=("gray80", "gray30"))
+        separator.grid(row=4, column=0, padx=20, pady=(12, 0), sticky="ew")
 
         # Кнопки
         button_frame = ctk.CTkFrame(self)
-        button_frame.grid(row=6, column=0, padx=10, pady=10, sticky="e")
+        button_frame.grid(row=5, column=0, padx=10, pady=(18, 12), sticky="e")
 
         ctk.CTkButton(button_frame, text="Отмена", command=self.cancel).pack(side="right", padx=5)
         ctk.CTkButton(button_frame, text="Списать", fg_color="red", command=self.ok).pack(side="right", padx=5)
@@ -82,7 +90,7 @@ class WriteOffDialog(BaseDialog):
             self.type_combobox.set(self.selected_item['type'])
             self.load_items()
             self.item_combobox.set(self.selected_item['name'])
-            self._on_item_change(self.selected_item['name'])
+            self._on_item_selected(self.selected_item['name'])
         else:
             self.load_items()
 
@@ -94,11 +102,11 @@ class WriteOffDialog(BaseDialog):
             items = get_all_stock_boxes()
             self.item_combobox.configure(values=[item['box_name'] for item in items])
 
-        if self.item_combobox.get() not in self.item_combobox['values']:
+        if self.item_combobox.get() not in self.item_combobox.cget("values"):
             self.item_combobox.set("")
             self.current_label.configure(text="Текущий остаток: 0")
 
-    def _on_item_selected(self, e):
+    def _on_item_selected(self, value=None):
         self._on_item_change(self.item_combobox.get())
 
     def _on_item_change(self, value):
@@ -107,21 +115,15 @@ class WriteOffDialog(BaseDialog):
             if item:
                 qty = get_stock_disc_quantity(item.doc_id)
                 self.current_label.configure(text=f"Текущий остаток: {qty}")
-                self.quantity_entry.delete(0, 'end')
-                self.quantity_entry.insert(0, str(qty))
             else:
                 self.current_label.configure(text="Текущий остаток: 0")
-                self.quantity_entry.delete(0, 'end')
         else:
             item = get_box_by_name(value)
             if item:
                 qty = get_stock_box_quantity(item.doc_id)
                 self.current_label.configure(text=f"Текущий остаток: {qty}")
-                self.quantity_entry.delete(0, 'end')
-                self.quantity_entry.insert(0, str(qty))
             else:
                 self.current_label.configure(text="Текущий остаток: 0")
-                self.quantity_entry.delete(0, 'end')
 
     def ok(self):
         item_name = self.item_combobox.get().strip()
@@ -159,6 +161,14 @@ class WriteOffDialog(BaseDialog):
             self.stock_tab.load_stock()
         if self.stock_tab:
             self.stock_tab.load_all()
+        main_window = self.master
+        if hasattr(main_window, 'tabs'):
+            if "Состав ИК" in main_window.tabs:
+                main_window.tabs["Состав ИК"].load_all()
+            if "Списание" in main_window.tabs:
+                main_window.tabs["Списание"].load_all()
+            if "Операции" in main_window.tabs:
+                main_window.tabs["Операции"].load_operations()
 
     def cancel(self):
         self.accepted = False

@@ -8,8 +8,6 @@ from tkinter import messagebox, ttk
 from data import (
     get_all_stock_discs, get_all_stock_boxes, get_all_discs, get_all_boxes,
     delete_disc, delete_box,
-    get_all_products, get_product_components,
-    get_stock_disc_quantity, get_stock_box_quantity,
     adjust_stock_disc, adjust_stock_box,
     get_disc_by_name, get_box_by_name,
 )
@@ -25,11 +23,21 @@ class StockTab(ctk.CTkFrame):
         super().__init__(master)
 
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=0)
+        self.grid_rowconfigure(1, weight=1)
+
+        # Заголовок
+        self.title_label = ctk.CTkLabel(self, text="Остатки", font=("Arial", 16, "bold"))
+        self.title_label.grid(row=0, column=0, padx=10, pady=10, sticky="w")
+
+        ctk.CTkButton(self, text="Выгрузить остатки в Excel", command=self.open_reports,
+                      fg_color="#4472C4", hover_color="#2e5aa8").grid(
+            row=0, column=1, padx=10, pady=10, sticky="e"
+        )
 
         # Подвкладки
         self.tabview = ctk.CTkTabview(self)
-        self.tabview.grid(row=0, column=0, sticky="nsew")
+        self.tabview.grid(row=1, column=0, columnspan=2, sticky="nsew")
 
         # --- Вкладка Носители ---
         self.tabview.add("Носители")
@@ -40,19 +48,21 @@ class StockTab(ctk.CTkFrame):
         discs_btn_frame = ctk.CTkFrame(self.discs_frame)
         discs_btn_frame.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
 
-        ctk.CTkButton(discs_btn_frame, text="Добавить", command=self.add_all).pack(side="left", padx=5)
+        ctk.CTkButton(discs_btn_frame, text="Приход", command=self.add_all).pack(side="left", padx=5)
         ctk.CTkButton(discs_btn_frame, text="Редактировать", command=self.edit_disc_stock).pack(side="left", padx=5)
         ctk.CTkButton(discs_btn_frame, text="Брак", fg_color="red", command=self.write_off_disc).pack(side="left", padx=5)
 
-        self.discs_tree = ttk.Treeview(self.discs_frame, columns=("name", "quantity"), show="tree headings")
+        self.discs_tree = ttk.Treeview(self.discs_frame, columns=("name", "description", "quantity"), show="tree headings")
         self.discs_tree.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
 
         self.discs_tree.heading("#0", text="", anchor="w")
         self.discs_tree.heading("name", text="Название", command=lambda: self._sort_tree(self.discs_tree, "name"))
+        self.discs_tree.heading("description", text="Описание", command=lambda: self._sort_tree(self.discs_tree, "description"))
         self.discs_tree.heading("quantity", text="Количество", command=lambda: self._sort_tree(self.discs_tree, "quantity"))
         self.discs_tree.column("#0", width=0, stretch=False)
-        self.discs_tree.column("name", width=250, anchor="w")
-        self.discs_tree.column("quantity", width=80, anchor="center")
+        self.discs_tree.column("name", width=150, anchor="w", stretch=False)
+        self.discs_tree.column("description", width=300, anchor="w", stretch=True)
+        self.discs_tree.column("quantity", width=80, anchor="center", stretch=False)
 
         discs_bottom = ctk.CTkFrame(self.discs_frame)
         discs_bottom.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
@@ -70,19 +80,21 @@ class StockTab(ctk.CTkFrame):
         boxes_btn_frame = ctk.CTkFrame(self.boxes_frame)
         boxes_btn_frame.grid(row=0, column=0, padx=10, pady=5, sticky="ew")
 
-        ctk.CTkButton(boxes_btn_frame, text="Добавить", command=self.add_all).pack(side="left", padx=5)
+        ctk.CTkButton(boxes_btn_frame, text="Приход", command=self.add_all).pack(side="left", padx=5)
         ctk.CTkButton(boxes_btn_frame, text="Редактировать", command=self.edit_box_stock).pack(side="left", padx=5)
         ctk.CTkButton(boxes_btn_frame, text="Брак", fg_color="red", command=self.write_off_box).pack(side="left", padx=5)
 
-        self.boxes_tree = ttk.Treeview(self.boxes_frame, columns=("name", "quantity"), show="tree headings")
+        self.boxes_tree = ttk.Treeview(self.boxes_frame, columns=("name", "description", "quantity"), show="tree headings")
         self.boxes_tree.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
 
         self.boxes_tree.heading("#0", text="", anchor="w")
         self.boxes_tree.heading("name", text="Название", command=lambda: self._sort_tree(self.boxes_tree, "name"))
+        self.boxes_tree.heading("description", text="Описание", command=lambda: self._sort_tree(self.boxes_tree, "description"))
         self.boxes_tree.heading("quantity", text="Количество", command=lambda: self._sort_tree(self.boxes_tree, "quantity"))
         self.boxes_tree.column("#0", width=0, stretch=False)
-        self.boxes_tree.column("name", width=250, anchor="w")
-        self.boxes_tree.column("quantity", width=80, anchor="center")
+        self.boxes_tree.column("name", width=150, anchor="w", stretch=False)
+        self.boxes_tree.column("description", width=300, anchor="w", stretch=True)
+        self.boxes_tree.column("quantity", width=80, anchor="center", stretch=False)
 
         boxes_bottom = ctk.CTkFrame(self.boxes_frame)
         boxes_bottom.grid(row=3, column=0, padx=10, pady=5, sticky="ew")
@@ -91,34 +103,20 @@ class StockTab(ctk.CTkFrame):
 
         self.boxes_tree.bind("<Double-1>", lambda e: self._on_double_click(e, "box"))
 
-        # --- Вкладка Комплекты ---
-        self.tabview.add("Комплекты")
-        self.products_frame = self.tabview.tab("Комплекты")
-        self.products_frame.grid_columnconfigure(0, weight=1)
-        self.products_frame.grid_rowconfigure(1, weight=1)
-
-        ctk.CTkLabel(self.products_frame, text="Доступные комплекты", font=("Arial", 14, "bold")).grid(
-            row=0, column=0, padx=10, pady=10, sticky="w"
-        )
-
-        self.products_tree = ttk.Treeview(self.products_frame, columns=("available",), show="tree headings")
-        self.products_tree.grid(row=1, column=0, padx=10, pady=5, sticky="nsew")
-
-        self.products_tree.heading("#0", text="Название", command=lambda: self._sort_tree(self.products_tree, "name"))
-        self.products_tree.heading("available", text="Доступно комплектов", command=lambda: self._sort_tree(self.products_tree, "available"))
-        self.products_tree.column("#0", width=250, anchor="w")
-        self.products_tree.column("available", width=150, anchor="center")
-
         # Загрузить данные
         self.load_all()
+
+    def open_reports(self):
+        """Выгрузить остатки в Excel (как в Toga)."""
+        from ui.excel_report import export_stock_report
+        export_stock_report(self.winfo_toplevel())
 
     # ─── Загрузка данных ────────────────────────────────────────
 
     def load_all(self):
-        """Загрузить все данные (диски, коробки, продукты)."""
+        """Загрузить все данные (диски, коробки)."""
         self.load_discs()
         self.load_boxes()
-        self.load_products()
 
     load_stock = load_all
 
@@ -126,33 +124,13 @@ class StockTab(ctk.CTkFrame):
         for item in self.discs_tree.get_children():
             self.discs_tree.delete(item)
         for disc in get_all_stock_discs():
-            self.discs_tree.insert("", "end", text="", values=(disc['disc_name'], disc['quantity']))
+            self.discs_tree.insert("", "end", text="", values=(disc['disc_name'], disc.get('description', ''), disc['quantity']))
 
     def load_boxes(self):
         for item in self.boxes_tree.get_children():
             self.boxes_tree.delete(item)
         for box in get_all_stock_boxes():
-            self.boxes_tree.insert("", "end", text="", values=(box['box_name'], box['quantity']))
-
-    def load_products(self):
-        for item in self.products_tree.get_children():
-            self.products_tree.delete(item)
-        for product in get_all_products():
-            product_id = product.doc_id
-            name = product['name']
-            components = get_product_components(product_id)
-            min_quantity = float('inf')
-            for comp in components:
-                disc_qty = get_stock_disc_quantity(comp['disc_id']) if comp['disc_id'] else float('inf')
-                box_qty = get_stock_box_quantity(comp['box_id']) if comp['box_id'] else float('inf')
-                if comp['disc_id'] and comp['disc_quantity'] > 0:
-                    disc_qty //= comp['disc_quantity']
-                if comp['box_id'] and comp['box_quantity'] > 0:
-                    box_qty //= comp['box_quantity']
-                min_quantity = min(min_quantity, disc_qty, box_qty)
-            if min_quantity == float('inf'):
-                min_quantity = 0
-            self.products_tree.insert("", "end", text=name, values=(int(min_quantity),))
+            self.boxes_tree.insert("", "end", text="", values=(box['box_name'], box.get('description', ''), box['quantity']))
 
     # ─── Сортировка ─────────────────────────────────────────────
 
@@ -166,7 +144,7 @@ class StockTab(ctk.CTkFrame):
         tree._sort_column = column
         tree._sort_reverse = reverse
 
-        col_idx = {"name": 0, "quantity": 1, "available": 0}.get(column, 0)
+        col_idx = {"name": 0, "quantity": 2, "description": 1}.get(column, 0)
         items.sort(key=lambda x: x[1][col_idx] if x[1] else x[0], reverse=reverse)
         for i in tree.get_children():
             tree.delete(i)
@@ -174,50 +152,59 @@ class StockTab(ctk.CTkFrame):
             tree.insert("", "end", text=text, values=values)
 
     def _on_double_click(self, event, comp_type):
-        """Редактирование количества по двойному клику."""
+        """Двойной клик: по колонке "Количество" — встроенное редактирование,
+        по остальным колонкам — диалог редактирования."""
         tree = self.discs_tree if comp_type == "disc" else self.boxes_tree
         item_id = tree.identify_row(event.y)
-        column = tree.identify_column(event.x)
-
-        if not item_id or column != '#2':
+        if not item_id:
             return
 
-        name = tree.item(item_id, 'values')[0]
-        current_qty = int(tree.item(item_id, 'values')[1])
+        column = tree.identify_column(event.x)
+        if column == '#3':
+            # Встроенное редактирование количества
+            name = tree.item(item_id, 'values')[0]
+            current_qty = int(tree.item(item_id, 'values')[2])
 
-        x, y, w, h = tree.bbox(item_id, column)
-        entry = tk.Entry(tree, font=("Arial", 10), justify="center")
-        entry.place(x=x, y=y, width=w, height=h)
-        entry.insert(0, str(current_qty))
-        entry.select_range(0, 'end')
-        entry.focus()
+            x, y, w, h = tree.bbox(item_id, column)
+            entry = tk.Entry(tree, font=("Arial", 10), justify="center")
+            entry.place(x=x, y=y, width=w, height=h)
+            entry.insert(0, str(current_qty))
+            entry.select_range(0, 'end')
+            entry.focus()
 
-        def on_confirm(e=None):
-            try:
-                new_qty = int(entry.get())
-                if new_qty < 0:
-                    new_qty = 0
-            except ValueError:
-                new_qty = current_qty
+            def on_confirm(e=None):
+                try:
+                    new_qty = int(entry.get())
+                    if new_qty < 0:
+                        new_qty = 0
+                except ValueError:
+                    new_qty = current_qty
 
-            entry.destroy()
+                entry.destroy()
 
-            if new_qty == current_qty:
-                return
+                if new_qty == current_qty:
+                    return
 
+                if comp_type == "disc":
+                    item = get_disc_by_name(name)
+                    if item:
+                        adjust_stock_disc(item.doc_id, new_qty)
+                else:
+                    item = get_box_by_name(name)
+                    if item:
+                        adjust_stock_box(item.doc_id, new_qty)
+
+                self.load_all()
+
+            entry.bind('<Return>', on_confirm)
+            entry.bind('<FocusOut>', on_confirm)
+        else:
+            # Открыть диалог редактирования
+            tree.selection_set(item_id)
             if comp_type == "disc":
-                item = get_disc_by_name(name)
-                if item:
-                    adjust_stock_disc(item.doc_id, new_qty)
+                self.edit_disc_stock()
             else:
-                item = get_box_by_name(name)
-                if item:
-                    adjust_stock_box(item.doc_id, new_qty)
-
-            self.load_all()
-
-        entry.bind('<Return>', on_confirm)
-        entry.bind('<FocusOut>', on_confirm)
+                self.edit_box_stock()
 
     # ─── Носители: действия ─────────────────────────────────────
 
@@ -240,7 +227,7 @@ class StockTab(ctk.CTkFrame):
             WriteOffDialog(self.winfo_toplevel(), self, data)
 
     def add_component_disc(self):
-        AddComponentDialog(self.winfo_toplevel(), self)
+        AddComponentDialog(self.winfo_toplevel(), self, default_type="Носитель")
 
     def delete_disc_component(self):
         data = self._selected_disc()
@@ -276,7 +263,7 @@ class StockTab(ctk.CTkFrame):
             WriteOffDialog(self.winfo_toplevel(), self, data)
 
     def add_component_box(self):
-        AddComponentDialog(self.winfo_toplevel(), self)
+        AddComponentDialog(self.winfo_toplevel(), self, default_type="Коробка")
 
     def delete_box_component(self):
         data = self._selected_box()

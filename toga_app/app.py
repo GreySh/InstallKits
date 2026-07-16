@@ -260,10 +260,10 @@ class InstallKitsApp(toga.App):
         table = toga.Table(
             columns=[
                 self._op_col("Название", "name", 200),
-                self._op_col("Доступно", "available", 70, "center"),
+                self._op_col("Доступно", "available", 100, "center"),
                 self._op_col("Состав", "components", None),
             ],
-            data=data, style=Pack(flex=1, margin=4),
+            data=data, style=Pack(flex=1, margin=4, font_size=12),
             on_select=self._on_select_products,
         )
         self.products_table = table
@@ -539,6 +539,13 @@ class InstallKitsApp(toga.App):
         filters.add(toga.Label("По:", style=Pack(margin=4, font_size=12)))
         self.op_end = toga.DateInput(style=Pack(width=160, margin=4, font_size=12))
         filters.add(self.op_end)
+        # По умолчанию «С:» — дата первой операции в базе
+        try:
+            first_op = min((op.get("date", "") for op in get_operations() if op.get("date")), default="")
+            if first_op:
+                self.op_start.value = datetime.strptime(first_op[:10], "%Y-%m-%d").date()
+        except Exception:
+            pass
         self.op_type = toga.Selection(items=["Все"] + list(self.OP_MAP.values()),
                                       style=Pack(width=200, margin=4, font_size=12))
         filters.add(self.op_type)

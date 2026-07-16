@@ -5,13 +5,14 @@
 import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
-from data import update_product, get_all_discs, get_all_boxes
+from data import update_product_with_components, get_all_discs, get_all_boxes
 from ui.dialogs.base_dialog import BaseDialog
+from ui.spinbox import CTkSpinbox
 
 
 class EditProductDialog(BaseDialog):
     def get_default_geometry(self):
-        return "500x500"
+        return "520x560"
     
     def __init__(self, master, product_id):
         super().__init__(master)
@@ -19,7 +20,8 @@ class EditProductDialog(BaseDialog):
         self.title("Редактировать продукт")
         
         self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(3, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(2, weight=1)
         
         self.product_id = product_id
         self.components = []
@@ -36,9 +38,15 @@ class EditProductDialog(BaseDialog):
         self.name_entry.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
         self.name_entry.insert(0, self.original_name)
         
+        # Описание
+        ctk.CTkLabel(self, text="Описание:", font=("Arial", 12, "bold")).grid(row=1, column=0, padx=10, pady=(0, 10), sticky="nw")
+        self.description_text = ctk.CTkTextbox(self, height=60)
+        self.description_text.grid(row=1, column=1, padx=10, pady=(0, 10), sticky="ew")
+        self.description_text.insert("1.0", product.get('description', '') or '')
+        
         # Фрейм компонентов
         self.components_frame = ctk.CTkFrame(self)
-        self.components_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
+        self.components_frame.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
         self.components_frame.grid_columnconfigure(0, weight=3)
         self.components_frame.grid_columnconfigure(1, weight=0)
         self.components_frame.grid_columnconfigure(2, weight=3)
@@ -66,7 +74,7 @@ class EditProductDialog(BaseDialog):
         
         # Кнопки
         button_frame = ctk.CTkFrame(self)
-        button_frame.grid(row=2, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
+        button_frame.grid(row=3, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
         
         self.add_row_button = ctk.CTkButton(button_frame, text="+ Добавить компонент", command=self.add_component_row)
         self.add_row_button.pack(side="left", padx=5)
@@ -99,8 +107,7 @@ class EditProductDialog(BaseDialog):
         disc_combo.grid(row=row, column=0, padx=5, pady=5, sticky="ew")
         
         # Кол-во диска
-        qty_entry = ctk.CTkEntry(self.components_frame, width=50)
-        qty_entry.insert(0, str(disc_quantity))
+        qty_entry = CTkSpinbox(self.components_frame, width=50, start=disc_quantity)
         qty_entry.grid(row=row, column=1, padx=5, pady=5, sticky="e")
         
         # Коробка
@@ -114,8 +121,7 @@ class EditProductDialog(BaseDialog):
         box_combo.grid(row=row, column=2, padx=5, pady=5, sticky="ew")
         
         # Кол-во коробки
-        qty_entry2 = ctk.CTkEntry(self.components_frame, width=50)
-        qty_entry2.insert(0, str(box_quantity))
+        qty_entry2 = CTkSpinbox(self.components_frame, width=50, start=box_quantity)
         qty_entry2.grid(row=row, column=3, padx=5, pady=5, sticky="e")
         
         # Кнопка удаления
@@ -200,7 +206,8 @@ class EditProductDialog(BaseDialog):
             })
         
         # Обновить продукт
-        update_product(self.product_id, name, components)
+        description = self.description_text.get("1.0", "end-1c").strip()
+        update_product_with_components(self.product_id, name, '', description, components)
         
         self.accepted = True
         self.destroy()

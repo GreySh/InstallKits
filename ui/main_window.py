@@ -3,13 +3,12 @@
 """
 
 import customtkinter as ctk
+from version import VERSION
 from ui.tabs.products_tab import ProductsTab
 from ui.tabs.stock_tab import StockTab
 from ui.tabs.settings_tab import SettingsTab
 from ui.tabs.operations_tab import OperationsTab
 from ui.tabs.batch_dispatch_tab import BatchDispatchTab
-from ui.report_window import ReportWindow
-from ui.dialogs.dispatch import DispatchDialog
 from data import get_all_products, get_all_discs, get_all_boxes, add_disc, add_box
 
 
@@ -17,7 +16,7 @@ class MainWindow(ctk.CTk):
     def __init__(self):
         super().__init__()
         
-        self.title("Учет инсталляционных комплектов")
+        self.title(f"Учет инсталляционных комплектов v{VERSION}")
         
         # Настраиваем тему
         ctk.set_appearance_mode("light")
@@ -25,6 +24,9 @@ class MainWindow(ctk.CTk):
         
         # Загружаем сохраненную геометрию
         self.load_geometry()
+        
+        # Порядок вкладок в боковой панели
+        self.tab_order = ["Списание", "Состав ИК", "Остатки", "Настройки", "Операции"]
         
         # Создаем навигацию
         self.create_navigation()
@@ -82,14 +84,14 @@ class MainWindow(ctk.CTk):
     def reload_tabs(self):
         """Перезагрузить все вкладки."""
         # Перезагрузить данные в вкладках
-        if hasattr(self, 'products_tab'):
-            self.products_tab.load_all()
-        if hasattr(self, 'stock_tab'):
-            self.stock_tab.load_all()
-        if hasattr(self, 'operations_tab'):
-            self.operations_tab.load_operations()
-        if hasattr(self, 'batch_dispatch_tab'):
-            self.batch_dispatch_tab.load_all()
+        if "Состав ИК" in self.tabs:
+            self.tabs["Состав ИК"].load_all()
+        if "Остатки" in self.tabs:
+            self.tabs["Остатки"].load_all()
+        if "Операции" in self.tabs:
+            self.tabs["Операции"].load_operations()
+        if "Списание" in self.tabs:
+            self.tabs["Списание"].load_all()
     
     def on_configure(self, event):
         """Сохранить геометрию при изменении размера или позиции."""
@@ -101,71 +103,57 @@ class MainWindow(ctk.CTk):
         self.destroy()
     
     def create_navigation(self):
-        """Создать панель навигации."""
-        self.nav_frame = ctk.CTkFrame(self, width=200)
-        self.nav_frame.pack(side="left", fill="y", padx=10, pady=10)
+        """Создать боковую панель переключения вкладок."""
+        self.sidebar = ctk.CTkFrame(self, width=180)
+        self.sidebar.pack(side="left", fill="y", padx=10, pady=10)
+        self.sidebar.pack_propagate(False)
+
+        self.tab_buttons = {}
+        for name in self.tab_order:
+            btn = ctk.CTkButton(
+                self.sidebar,
+                text=name,
+                command=lambda n=name: self.show_tab(n),
+            )
+            btn.pack(fill="x", padx=10, pady=5)
+            self.tab_buttons[name] = btn
         
-        # Кнопка отчетов
-        self.report_button = ctk.CTkButton(
-            self.nav_frame,
-            text="Отчеты",
-            command=self.open_report_window,
-            width=150
-        )
-        self.report_button.pack(pady=10)
-        
-        # Кнопка списания
-        self.dispatch_button = ctk.CTkButton(
-            self.nav_frame,
-            text="Списать ИК",
-            command=self.open_dispatch_dialog,
-            width=150
-        )
-        self.dispatch_button.pack(pady=10)
     
     def create_tabs(self):
         """Создать вкладки."""
-        self.tabview = ctk.CTkTabview(self, width=750, height=600)
-        self.tabview.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+        self.content = ctk.CTkFrame(self)
+        self.content.pack(side="right", fill="both", expand=True, padx=10, pady=10)
+        self.content.grid_columnconfigure(0, weight=1)
+        self.content.grid_rowconfigure(0, weight=1)
         
-        # Вкладка пакетного списания (основная)
-        self.batch_dispatch_tab = BatchDispatchTab(self.tabview.add("Списание"))
-        self.batch_dispatch_tab.grid(row=0, column=0, sticky="nsew")
-        self.tabview.tab("Списание").grid_columnconfigure(0, weight=1)
-        self.tabview.tab("Списание").grid_rowconfigure(0, weight=1)
+        self.tabs = {
+            "Списание": BatchDispatchTab,
+            "Состав ИК": ProductsTab,
+            "Остатки": StockTab,
+            "Настройки": SettingsTab,
+            "Операции": OperationsTab,
+        }
         
-        # Вкладка продуктов
-        self.products_tab = ProductsTab(self.tabview.add("Состав ИК"))
-        self.products_tab.grid(row=0, column=0, sticky="nsew")
-        self.tabview.tab("Состав ИК").grid_columnconfigure(0, weight=1)
-        self.tabview.tab("Состав ИК").grid_rowconfigure(0, weight=1)
+        for name, tab_cls in self.tabs.items():
+            self.tabs[name] = tab_cls(self.content)
+            self.tabs[name].grid(row=0, column=0, sticky="nsew")
+            self.tabs[name].grid_remove()
         
-        # Вкладка остатков
-        self.stock_tab = StockTab(self.tabview.add("Остатки"))
-        self.stock_tab.grid(row=0, column=0, sticky="nsew")
-        self.tabview.tab("Остатки").grid_columnconfigure(0, weight=1)
-        self.tabview.tab("Остатки").grid_rowconfigure(0, weight=1)
-        
-        # Вкладка настроек
-        self.settings_tab = SettingsTab(self.tabview.add("Настройки"))
-        self.settings_tab.grid(row=0, column=0, sticky="nsew")
-        self.tabview.tab("Настройки").grid_columnconfigure(0, weight=1)
-        self.tabview.tab("Настройки").grid_rowconfigure(0, weight=1)
-        
-        # Вкладка операций
-        self.operations_tab = OperationsTab(self.tabview.add("Операции"))
-        self.operations_tab.grid(row=0, column=0, sticky="nsew")
-        self.tabview.tab("Операции").grid_columnconfigure(0, weight=1)
-        self.tabview.tab("Операции").grid_rowconfigure(0, weight=1)
+        self.show_tab("Списание")
     
-    def open_report_window(self):
-        """Открыть окно отчетов."""
-        ReportWindow(self)
-    
-    def open_dispatch_dialog(self):
-        """Открыть диалог списания комплекта."""
-        DispatchDialog(self, self.stock_tab)
-    
+    def show_tab(self, name):
+        """Показать выбранную вкладку."""
+        for n, frame in self.tabs.items():
+            if n == name:
+                frame.grid()
+            else:
+                frame.grid_remove()
+        for n, btn in self.tab_buttons.items():
+            if n == name:
+                btn.configure(fg_color="#1f6feb", hover_color="#1a5fce")
+            else:
+                btn.configure(fg_color=("gray75", "gray25"), hover_color=("gray70", "gray30"))
+
 
 
 if __name__ == "__main__":

@@ -21,13 +21,19 @@ class BatchDispatchTab(ctk.CTkFrame):
         self.grid_rowconfigure(2, weight=1)
 
         # Заголовок
-        ctk.CTkLabel(self, text="Пакетное списание ИК", font=("Arial", 16, "bold")).grid(
+        ctk.CTkLabel(self, text="Списание инсталляционных комплектов", font=("Arial", 16, "bold")).grid(
             row=0, column=0, padx=10, pady=10, sticky="w"
         )
 
+        # Кнопка Обновить над таблицей
+        top_frame = ctk.CTkFrame(self, fg_color="transparent")
+        top_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=5, sticky="e")
+
+        ctk.CTkButton(top_frame, text="Обновить", command=self._load_products).pack(side="right", padx=10)
+
         # Дата
-        date_frame = ctk.CTkFrame(self)
-        date_frame.grid(row=1, column=0, padx=10, pady=5, sticky="ew")
+        date_frame = ctk.CTkFrame(self, fg_color="transparent")
+        date_frame.grid(row=3, column=0, columnspan=2, padx=10, pady=5, sticky="e")
 
         ctk.CTkLabel(date_frame, text="Дата отгрузки:", font=("Arial", 12, "bold")).pack(side="left", padx=10)
         self.date_picker = DatePicker(date_frame)
@@ -36,18 +42,18 @@ class BatchDispatchTab(ctk.CTkFrame):
         today = datetime.now().strftime('%d.%m.%Y')
         self.date_picker.insert(0, today)
 
-        ctk.CTkButton(date_frame, text="Обновить", command=self._load_products).pack(side="right", padx=10)
-
         # Таблица
-        columns = ("product", "available", "dispatch")
+        columns = ("product", "description", "available", "dispatch")
         self.tree = ttk.Treeview(self, columns=columns, show="headings")
         self.tree.grid(row=2, column=0, padx=10, pady=5, sticky="nsew")
 
         self.tree.heading("product", text="Продукт")
+        self.tree.heading("description", text="Описание")
         self.tree.heading("available", text="Доступно")
         self.tree.heading("dispatch", text="Списать")
 
-        self.tree.column("product", width=200, anchor="w", stretch=True)
+        self.tree.column("product", width=150, anchor="w", stretch=False)
+        self.tree.column("description", width=200, anchor="w", stretch=True)
         self.tree.column("available", width=80, anchor="center", stretch=False)
         self.tree.column("dispatch", width=80, anchor="center", stretch=False)
 
@@ -61,11 +67,11 @@ class BatchDispatchTab(ctk.CTkFrame):
         self.tree.bind("<Double-1>", self._on_double_click)
 
         # Кнопки
-        btn_frame = ctk.CTkFrame(self)
-        btn_frame.grid(row=3, column=0, columnspan=2, padx=10, pady=10, sticky="e")
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.grid(row=4, column=0, columnspan=2, padx=10, pady=10, sticky="e")
 
-        ctk.CTkButton(btn_frame, text="Очистить", command=self._clear).pack(side="right", padx=5)
         ctk.CTkButton(btn_frame, text="Списать выбранное", fg_color="red", command=self._dispatch).pack(side="right", padx=5)
+        ctk.CTkButton(btn_frame, text="Очистить", command=self._clear).pack(side="right", padx=5)
 
         self._dispatch_values = {}
         self._load_products()
@@ -80,7 +86,7 @@ class BatchDispatchTab(ctk.CTkFrame):
             self.tree.insert(
                 "", "end",
                 iid=str(product.doc_id),
-                values=(product['name'], available, 0),
+                values=(product['name'], product.get('description', ''), available, 0),
             )
             self._dispatch_values[product.doc_id] = 0
 
@@ -103,10 +109,11 @@ class BatchDispatchTab(ctk.CTkFrame):
 
     def _on_resize(self, event):
         total = event.width
-        available_w = max(60, int(total * 0.15))
-        dispatch_w = max(60, int(total * 0.15))
-        product_w = max(100, total - available_w - dispatch_w - 4)
-        self.tree.column("product", width=product_w)
+        available_w = max(60, int(total * 0.12))
+        dispatch_w = max(60, int(total * 0.12))
+        desc_w = max(80, total - 150 - available_w - dispatch_w - 4)
+        self.tree.column("product", width=150)
+        self.tree.column("description", width=desc_w)
         self.tree.column("available", width=available_w)
         self.tree.column("dispatch", width=dispatch_w)
 
@@ -114,11 +121,11 @@ class BatchDispatchTab(ctk.CTkFrame):
         item_id = self.tree.identify_row(event.y)
         column = self.tree.identify_column(event.x)
 
-        if not item_id or column != '#3':
+        if not item_id or column != '#4':
             return
 
         product_id = int(item_id)
-        available = int(self.tree.item(item_id, 'values')[1])
+        available = int(self.tree.item(item_id, 'values')[2])
 
         x, y, w, h = self.tree.bbox(item_id, column)
         entry = tk.Entry(self.tree, font=("Arial", 10), justify="center")
@@ -175,3 +182,18 @@ class BatchDispatchTab(ctk.CTkFrame):
         messagebox.showinfo("Успех", result_msg)
 
         self._load_products()
+
+        # Обновить остатки на вкладках "Остатки", "Состав ИК", "Списание" и "Операции"
+        try:
+            main_window = self.master.nametowidget('.')
+            if hasattr(main_window, 'tabs'):
+                if "Остатки" in main_window.tabs:
+                    main_window.tabs["Остатки"].load_all()
+                if "Состав ИК" in main_window.tabs:
+                    main_window.tabs["Состав ИК"].load_all()
+                if "Списание" in main_window.tabs:
+                    main_window.tabs["Списание"].load_all()
+                if "Операции" in main_window.tabs:
+                    main_window.tabs["Операции"].load_operations()
+        except Exception:
+            pass
