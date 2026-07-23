@@ -1,11 +1,6 @@
 {
   "window_geometries": {
-    "MainWindow": {
-      "width": 1012,
-      "height": 700,
-      "x": 313,
-      "y": 116
-    },
+    "MainWindow": "1073x536+2366+235",
     "AddEditProductWindow": {
       "width": 705,
       "height": 555,
@@ -30,9 +25,14 @@
       "x": 873,
       "y": 422
     },
-    "EditProductDialog": "556x500+770+224",
-    "AddAllDialog": "400x400+674+353",
-    "ReportWindow": "600x500+649+295"
+    "EditProductDialog": "556x428+2595+260",
+    "AddAllDialog": "331x245+2744+405",
+    "ReportWindow": "600x500+649+295",
+    "AddProductDialog": "500x385+2650+288",
+    "AdjustStockDialog": "367x423+2856+447",
+    "AddComponentDialog": "345x281+2763+439",
+    "WriteOffDialog": "369x302+2688+322",
+    "StockViewWindow": "750x520+2646+222"
   },
   "db_path": "D:\\Projects\\db_IK.json",
   "window_width": 1048.0,

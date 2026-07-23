@@ -9,6 +9,8 @@ from datetime import datetime, date
 from data import get_all_fixations
 from ui.dialogs.base_dialog import BaseDialog
 from ui.widgets.date_picker import DatePicker
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 
 
 DATE_FMT = "%d.%m.%Y"
@@ -37,6 +39,9 @@ class StockViewWindow(BaseDialog):
 
         ctk.CTkButton(top, text="Показать", command=self.load_fixation,
                       fg_color="#4472C4", hover_color="#2e5aa8").pack(side="left")
+        ctk.CTkButton(top, text="Выгрузить в Excel",
+                      command=self.export_excel,
+                      fg_color="#4472C4", hover_color="#2e5aa8").pack(side="right")
 
         # ─── Подпись результата ────────────────────────────────────
         self.info_label = ctk.CTkLabel(self, text="", font=("Arial", 12))
@@ -111,6 +116,64 @@ class StockViewWindow(BaseDialog):
             self.tree.insert("", "end", values=(
                 "Коробка", b["name"], b["quantity"], b.get("description", "")
             ))
+
+    def export_excel(self):
+        """Выгрузить таблицу остатков в Excel."""
+        rows = []
+        for item_id in self.tree.get_children():
+            item = self.tree.item(item_id)
+            vals = item['values']
+            rows.append([vals[0], vals[1], vals[2], vals[3]])
+
+        if not rows:
+            messagebox.showinfo("Нет данных", "Нет данных для выгрузки.", parent=self)
+            return
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Остатки"
+
+        header_fill = PatternFill("solid", fgColor="4472C4")
+        header_font = Font(bold=True, color="FFFFFF", size=11)
+        border = Border(
+            left=Side(style='thin'), right=Side(style='thin'),
+            top=Side(style='thin'), bottom=Side(style='thin'),
+        )
+        align_c = Alignment(horizontal='center', vertical='center')
+        align_l = Alignment(horizontal='left', vertical='center')
+
+        headers = ["Тип", "Название", "Количество", "Описание"]
+        for ci, h in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=ci, value=h)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = align_c
+            cell.border = border
+
+        for ri, vals in enumerate(rows, 2):
+            for ci, v in enumerate(vals, 1):
+                cell = ws.cell(row=ri, column=ci, value=v)
+                cell.border = border
+                cell.alignment = align_c if ci == 3 else align_l
+
+        ws.column_dimensions['A'].width = 14
+        ws.column_dimensions['B'].width = 30
+        ws.column_dimensions['C'].width = 14
+        ws.column_dimensions['D'].width = 40
+
+        suggested = f"Остатки от {self.date_picker.get().replace('.','-')}.xlsx"
+        file_path = ctk.filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx")],
+            initialfile=suggested,
+            parent=self,
+        )
+        if file_path:
+            try:
+                wb.save(file_path)
+                messagebox.showinfo("Успех", f"Файл сохранён:\n{file_path}", parent=self)
+            except Exception as e:
+                messagebox.showerror("Ошибка", f"Не удалось сохранить файл: {e}", parent=self)
 
     def on_close(self):
         super().on_close()
